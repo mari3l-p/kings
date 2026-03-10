@@ -68,14 +68,13 @@ const CategoriasRandom = () => {
                                         {cat.nombre}
                                     </h3>
                                     
-                                    <Link 
-                                        href={`/catalogo?categoria=${cat.nombre.toLowerCase()}`}
+                                    <button
                                         className="bg-(--pink-75) text-white px-6 py-3 rounded-full font-bold uppercase text-xs tracking-widest 
                                                 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 
                                                 transition-all duration-300 hover:bg-white hover:text-black shadow-lg"
                                     >
                                         Comprar
-                                    </Link>
+                                    </button>
                                 </div>
                             </div>
                         </Link>

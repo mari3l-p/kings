@@ -1,17 +1,15 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { LayoutDashboard, Tag, Package, BarChart3, LogOut, Menu } from "lucide-react"
+import { Tag, Package, BarChart3, LogOut, Menu, X } from "lucide-react"
 import CrearPromocion from "./promos/page"
 import { supabase } from "../lib/supabase"
 import { useRouter } from "next/navigation"
 import GestionOrdenes from "../components/GestionOrdenes"
 
 const AdminPage = () => {
-
     const [tab, setTab] = useState("stats")
     const [sidebarOpen, setSidebarOpen] = useState(false)
-
     const [user, setUser] = useState<any>(null)
     const router = useRouter()
 
@@ -29,162 +27,120 @@ const AdminPage = () => {
 
     const handleLogout = async () => {
         const { error } = await supabase.auth.signOut()
-
-        if (!error) {
-            router.push("/")
-        }
+        if (!error) router.push("/")
     }
 
     if (!user) return <div className="bg-black min-h-screen" />
 
     return (
-        <div className="flex min-h-screen bg-[#050505] text-white">
+        // Using isolation-isolate to force a clean stacking context
+        <div className="relative flex min-h-screen bg-[#050505] text-white isolation-isolate">
+            
+            {/* --- MOBILE FIXED UI (Separated from main logic) --- */}
+            <div className="lg:hidden">
+                {/* Mobile Header Bar */}
+                <div className="fixed bottom-0 left-0 right-0 h-16 bg-black/90 backdrop-blur-md border-b border-white/10 flex items-center justify-between px-6 z-9999">
+                    <h1 className="font-bold text-sm tracking-tighter">
+                        VAPE <span className="text-(--pink-75)">KINGS</span>
+                    </h1>
+                    <button 
+                        onClick={() => setSidebarOpen(!sidebarOpen)}
+                        className="p-2 bg-white/5 rounded-lg text-(--pink-75) active:scale-90 transition-transform"
+                    >
+                        <Menu size={24} />
+                    </button>
+                </div>
 
-            {/* MOBILE TOP BAR */}
-            <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-black border-b border-white/10 flex items-center justify-between px-4 h-16">
-                <h1 className="font-bold">
-                    VAPE <span className="text-(--pink-75)">ADMIN</span>
-                </h1>
+                {/* Mobile Sidebar Overlay */}
+                <div 
+                    className={`fixed inset-0 bg-black z-[10000]transition-all duration-300 transform ${
+                        sidebarOpen ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"
+                    }`}
+                >
+                    <div className="p-8 flex flex-col h-full">
+                        <div className="flex justify-between items-center mb-12">
+                            <h2 className="text-2xl font-bold tracking-tighter">MENU</h2>
+                            <button onClick={() => setSidebarOpen(false)} className="p-2 bg-white/10 rounded-full">
+                                <X size={28} />
+                            </button>
+                        </div>
 
-                <button onClick={() => setSidebarOpen(!sidebarOpen)}>
-                    <Menu size={24} />
-                </button>
+                        <nav className="space-y-6">
+                            {[
+                                { id: "stats", label: "Estadísticas", icon: BarChart3 },
+                                { id: "promos", label: "Promociones", icon: Tag },
+                                { id: "productos", label: "Inventario", icon: Package }
+                            ].map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => { setTab(item.id); setSidebarOpen(false); }}
+                                    className={`w-full flex items-center gap-6 p-4 rounded-3xl text-xl font-bold transition-all ${
+                                        tab === item.id ? "bg-(--pink-75) shadow-lg shadow-pink-500/20" : "text-gray-500"
+                                    }`}
+                                >
+                                    <item.icon size={28} />
+                                    {item.label}
+                                </button>
+                            ))}
+                        </nav>
+                        
+                        <button onClick={handleLogout} className="mt-auto flex items-center gap-4 p-4 mb-8 lg:mb-0 text-red-500 font-bold">
+                            <LogOut size={24} /> CERRAR SESIÓN
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            {/* SIDEBAR */}
-            <aside
-                className={`
-                fixed lg:static top-0 left-0 h-full w-64 bg-[#050505]
-                border-r border-white/10 p-6 flex flex-col
-                transform transition-transform duration-300 z-50
-                ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-                lg:translate-x-0
-                `}
-            >
-
-                <div className="mb-10 px-2 font-medium hidden lg:block">
-                    <h1 className="text-xl">
-                        VAPE <span className="text-(--pink-75)">ADMIN</span>
+            {/* --- DESKTOP SIDEBAR --- */}
+            <aside className="hidden lg:flex flex-col w-72 bg-[#080808] border-r border-white/10 p-6 h-screen sticky top-0">
+                <div className="mb-10 px-2 font-bold">
+                    <h1 className="text-xl tracking-tighter">
+                        THE VAPE <span className="text-(--pink-75)">KINGS</span>
                     </h1>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-widest">Admin Panel</p>
                 </div>
 
-                <nav className="flex-1 space-y-2 mt-10 lg:mt-0">
-
-                    <button
-                        onClick={() => {
-                            setTab("stats")
-                            setSidebarOpen(false)
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all
-                        ${tab === "stats"
-                                ? "bg-(--pink-75)"
-                                : "text-gray-500 hover:bg-white/5"
-                            }`}
-                    >
-                        <BarChart3 size={20} />
-                        <span className="text-sm font-bold uppercase tracking-widest">
-                            Estadísticas
-                        </span>
+                <nav className="flex-1 space-y-3">
+                    <button onClick={() => setTab("stats")} className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all ${tab === "stats" ? "bg-(--pink-75)" : "text-gray-400 hover:bg-white/5"}`}>
+                        <BarChart3 size={22} /> <span className="text-sm font-bold uppercase tracking-widest">Estadísticas</span>
                     </button>
-
-                    <button
-                        onClick={() => {
-                            setTab("promos")
-                            setSidebarOpen(false)
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all
-                        ${tab === "promos"
-                                ? "bg-(--pink-75)"
-                                : "text-gray-500 hover:bg-white/5"
-                            }`}
-                    >
-                        <Tag size={20} />
-                        <span className="text-sm font-bold uppercase tracking-widest">
-                            Promociones
-                        </span>
+                    <button onClick={() => setTab("promos")} className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all ${tab === "promos" ? "bg-(--pink-75)" : "text-gray-400 hover:bg-white/5"}`}>
+                        <Tag size={22} /> <span className="text-sm font-bold uppercase tracking-widest">Promociones</span>
                     </button>
-
-                    <button
-                        onClick={() => {
-                            setTab("productos")
-                            setSidebarOpen(false)
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all
-                        ${tab === "productos"
-                                ? "bg-(--pink-75)"
-                                : "text-gray-500 hover:bg-white/5"
-                            }`}
-                    >
-                        <Package size={20} />
-                        <span className="text-sm font-bold uppercase tracking-widest">
-                            Productos
-                        </span>
+                    <button onClick={() => setTab("productos")} className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all ${tab === "productos" ? "bg-(--pink-75)" : "text-gray-400 hover:bg-white/5"}`}>
+                        <Package size={22} /> <span className="text-sm font-bold uppercase tracking-widest">Inventario</span>
                     </button>
-
                 </nav>
 
-                <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-3 px-4 py-3 text-red-500/50 hover:text-red-500 transition-colors mt-auto"
-                >
-                    <LogOut size={20} />
-                    <span className="text-sm font-bold uppercase tracking-widest">
-                        Salir
-                    </span>
+                <button onClick={handleLogout} className="flex items-center gap-4 px-4 py-4 text-red-500/60 hover:text-red-500 border-t border-white/5 mt-auto pt-6">
+                    <LogOut size={22} /> <span className="text-sm font-bold uppercase tracking-widest">Cerrar Sesión</span>
                 </button>
-
             </aside>
 
-            {/* MAIN CONTENT */}
-            <main className="flex-1 pt-20 lg:pt-10 p-4 sm:p-6 lg:p-10 overflow-y-auto">
+            {/* --- MAIN CONTENT AREA --- */}
+            <main className="flex-1 min-w-0 min-h-screen pt-20 lg:pt-0">
+                <div className="p-6 sm:p-8 lg:p-12 max-w-6xl mx-auto">
+                    <header className="mb-8">
+                        <h2 className="text-3xl sm:text-4xl font-bold uppercase tracking-tighter italic">
+                            {tab === "stats" && "Resumen General"}
+                            {tab === "promos" && "Promociones"}
+                            {tab === "productos" && "Inventario de Vapes"}
+                        </h2>
+                        <div className="h-1 w-20 bg-(--pink-75) mt-2" />
+                    </header>
 
-                <header className="mb-10">
-                    <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold uppercase tracking-tighter">
-
-                        {tab === "stats" && "Resumen de Ventas"}
-                        {tab === "promos" && "Gestión de Promociones"}
-                        {tab === "productos" && "Inventario de Vapes"}
-
-                    </h2>
-
-                    <p className="text-gray-500 text-xs sm:text-sm uppercase tracking-widest mt-1">
-                        Panel de control administrativo
-                    </p>
-                </header>
-
-                <div className="bg-white/5 border border-white/10 rounded-3xl p-4 sm:p-6 lg:p-8">
-
-                    {tab === "stats" && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-
-                            <div className="p-6 bg-black border border-white/10 rounded-2xl">
-                                <p className="text-gray-500 text-xs uppercase mb-2">
-                                    Total Productos
-                                </p>
-                                <span className="text-3xl font-bold">124</span>
+                    <div className="bg-[#0f0f0f] border border-white/5 rounded-[2.5rem] p-4 sm:p-8">
+                        {tab === "stats" && (
+                            <div className="p-8 bg-black border border-white/10 rounded-3xl max-w-sm">
+                                <p className="text-gray-500 text-xs uppercase font-bold tracking-[0.2em] mb-3">Total Productos</p>
+                                <span className="text-5xl font-bold tracking-tighter">124</span>
                             </div>
-
-                        </div>
-                    )}
-
-                    {tab === "promos" && (
-                        <section className="animate-in fade-in slide-in-from-bottom-4">
-                            <h3 className="text-xl font-bold mb-6">
-                                Crear Nueva Promo
-                            </h3>
-
-                            <CrearPromocion />
-                        </section>
-                    )}
-
-                    {tab === "productos" && (
-                        <GestionOrdenes />
-                    )}
-
+                        )}
+                        {tab === "promos" && <CrearPromocion />}
+                        {tab === "productos" && <GestionOrdenes />}
+                    </div>
                 </div>
-
             </main>
-
         </div>
     )
 }
