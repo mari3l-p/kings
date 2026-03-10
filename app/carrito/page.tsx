@@ -284,13 +284,13 @@ Pago: ${formData.pago.join(", ")}
                   onClick={() => setFormData({ ...formData, entrega: "domicilio" })}
                   className={`px-4 py-2 rounded-lg text-sm ${formData.entrega === "domicilio" ? "bg-(--pink-75) text-white" : "text-gray-400"}`}
                 >
-                  A Domicilio
+                  Envío a Domicilio
                 </button>
                 <button
                   onClick={() => setFormData({ ...formData, entrega: "recoger" })}
                   className={`px-4 py-2 rounded-lg text-sm ${formData.entrega === "recoger" ? "bg-(--pink-75) text-white" : "text-gray-400"}`}
                 >
-                  En Tienda
+                  Recoger en Tienda
                 </button>
               </div>
             </div>
@@ -328,7 +328,7 @@ Pago: ${formData.pago.join(", ")}
               <h3>TELÉFONO</h3>
               <input
                 type="tel"
-                placeholder="961..."
+                placeholder="529684574887"
                 className="mt-3 w-full bg-white/5 border border-white/10 p-4 rounded-xl outline-none focus:border-(--pink-75)"
                 value={formData.telefono}
                 onChange={(e) => setFormData({ ...formData, telefono: e.target.value.replace(/\D/g, "") })}
