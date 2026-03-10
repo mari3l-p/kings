@@ -100,7 +100,7 @@ const AdminPage = () => {
                     <p className="text-[10px] text-gray-500 uppercase tracking-widest">Admin Panel</p>
                 </div>
 
-                <nav className="flex-1 space-y-3">
+                <nav className="flex-1 space-y-3 mt-4 md:mt-0">
                     <button onClick={() => setTab("stats")} className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all ${tab === "stats" ? "bg-(--pink-75)" : "text-gray-400 hover:bg-white/5"}`}>
                         <BarChart3 size={22} /> <span className="text-sm font-bold uppercase tracking-widest">Estadísticas</span>
                     </button>

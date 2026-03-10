@@ -13,7 +13,7 @@ export default function Navbar() {
 
     const vapesCount = cart.reduce((acc, item) => (acc + item.cantidad), 0)
 
-    const phone = "529671844575"; // El número de tu tienda
+    const phone = "529671614636"; // El número de tu tienda
     const message = "¡Hola! Tengo una duda sobre los vapes.";
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 
@@ -25,7 +25,7 @@ export default function Navbar() {
                     <h2 className="text-2xl font-bold text-white tracking-tighter italic">
                         THE VAPE KINGS
                     </h2>
-                    <p className='text-xs'>Experiencia premium</p>
+                    <p className='text-xs'>No somos los únicos pero si los mejores</p>
                 </div>
             </Link>
 

@@ -15,8 +15,9 @@ export default function CrearPromocion() {
     const [form, setForm] = useState({
         nombre: "",
         categoria: "",
-        desc_tipo: "porcentaje",
-        desc_valor: "",
+        desc_tipo: "porcentaje", // Ahora aceptará "porcentaje", "fijo", o "pack"
+        desc_valor: "",         // Precio total (ej: 400)
+        cantidad_pack: "1",     // Cantidad de vapes (ej: 2)
         comienza: "",
         termina: ""
     })
@@ -48,6 +49,7 @@ export default function CrearPromocion() {
                     categoria: form.categoria,
                     desc_tipo: form.desc_tipo,
                     desc_valor: form.desc_valor,
+                    cantidad_pack: form.desc_tipo === "pack" ? parseInt(form.cantidad_pack) : 1, // <--- Nuevo
                     comienza: fechaInicio,
                     termina: fechaFin,
                     activo: true,
@@ -116,31 +118,48 @@ export default function CrearPromocion() {
                     </select>
                 </div>
 
-                {/* Tipo de Descuento */}
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className={labelStyle}><Percent size={14}/> Tipo</label>
-                        <select
-                            className={inputStyle}
-                            value={form.desc_tipo}
-                            onChange={(e) => setForm({ ...form, desc_tipo: e.target.value })}
-                        >
-                            <option value="porcentaje">Porcentaje %</option>
-                            <option value="fijo">Fijo $</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className={labelStyle}>Valor</label>
-                        <input
-                            type="number"
-                            className={inputStyle}
-                            placeholder="0"
-                            value={form.desc_valor}
-                            onChange={(e) => setForm({ ...form, desc_valor: e.target.value })}
-                            required
-                        />
-                    </div>
-                </div>
+                    {/* Tipo de Descuento y Valor */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label className={labelStyle}><Percent size={14}/> Tipo de Promo</label>
+                            <select
+                                className={inputStyle}
+                                value={form.desc_tipo}
+                                onChange={(e) => setForm({ ...form, desc_tipo: e.target.value })}
+                            >
+                                <option value="porcentaje">Porcentaje %</option>
+                                <option value="fijo">Descuento Fijo $</option>
+                                <option value="pack">Pack / Combo (Ej: 2 x $400)</option>
+                            </select>
+                        </div>
+
+                        {form.desc_tipo === "pack" && (
+                            <div>
+                                <label className={labelStyle}>Cant. de Vapes</label>
+                                <input
+                                    type="number"
+                                    className={inputStyle}
+                                    placeholder="Ej: 2"
+                                    value={form.cantidad_pack}
+                                    onChange={(e) => setForm({ ...form, cantidad_pack: e.target.value })}
+                                />
+                            </div>
+                        )}
+
+        <div>
+            <label className={labelStyle}>
+                {form.desc_tipo === "pack" ? "Precio Total del Pack" : "Valor del Descuento"}
+            </label>
+            <input
+                type="number"
+                className={inputStyle}
+                placeholder={form.desc_tipo === "pack" ? "400" : "0"}
+                value={form.desc_valor}
+                onChange={(e) => setForm({ ...form, desc_valor: e.target.value })}
+                required
+            />
+        </div>
+    </div>
 
                 {/* Fechas */}
                 <div>

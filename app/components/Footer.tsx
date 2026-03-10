@@ -55,7 +55,7 @@ const Footer = () => {
                     <div>
                         <h3 className="text-white font-bold mb-6 uppercase text-xs tracking-[0.2em]">Social</h3>
                         <div className="flex gap-4">
-                            <a href="https://wa.me/529671844575" target='_blank' className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center hover:bg-[#25D366] transition-all">
+                            <a href="https://wa.me/529671614636" target='_blank' className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center hover:bg-[#25D366] transition-all">
                                 <MessageCircle size={20} className="text-white"/>
                             </a>
                         </div>
