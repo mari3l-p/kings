@@ -4,20 +4,39 @@
   --font-sans: var(--font-montserrat);
 
   --white: #ffffff;
-  --background: #171717;
+  --background: #000000;
+  --gray-bg: #0F0F0F;
+
+  --hover-dark: #101010;
+
+  --gray-light: #797979;
   --gray: #D9D9D9;
 
   --rose-pink: #FD85A3;
 
   --pink: #FF008C;
+  --pinkLowest: rgb(255,0,140,0.03);
+  --pink-low: rgb(255,0,140,0.10);
   --pink-15: rgb(255,0,140,0.15);
-  --pink-75: rgb(255,0,140,0.75);
+  --pink-35: rgb(255,0,140,0.35);
+  --pink-50: #ff008c80;
+  --pink-75: #ff008cbf;
+
+  --purple: #5d0d3a;
 
   --yellow: #D2AE0A;
+
+  --green: #25D366;
+
+  --promo: #e64040;
 }
 
 body {
   font-family: var(--font-montserrat), sans-serif;
   color: var(--white);
   background-color: var(--background);
+}
+
+.fondo-dark:hover {
+  background-color: var(--hover-dark);
 }

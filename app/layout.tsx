@@ -1,6 +1,8 @@
 import { Montserrat } from 'next/font/google'
 import './globals.css'
 import Navbar from './components/Navbar'
+import { CartProvider } from './context/CartContext'
+import Footer from './components/Footer'
 
 
 const montserrat = Montserrat({
@@ -22,8 +24,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       {/* 3. Apply the variable to the body */}
       <body className={`${montserrat.variable} font-sans antialiased`}>
-        <Navbar/>
-        {children}
+        <CartProvider>
+          <Navbar/>
+          {children}
+          <Footer/>
+        </CartProvider>
       </body>
     </html>
   )
