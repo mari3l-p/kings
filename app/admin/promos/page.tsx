@@ -129,7 +129,7 @@ export default function CrearPromocion() {
                             >
                                 <option value="porcentaje">Porcentaje %</option>
                                 <option value="fijo">Descuento Fijo $</option>
-                                <option value="pack">Pack / Combo (Ej: 2 x $400)</option>
+                                <option value="pack">Pack / Combo</option>
                             </select>
                         </div>
 

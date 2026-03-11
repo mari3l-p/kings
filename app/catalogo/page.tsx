@@ -1,9 +1,9 @@
 "use client"
-import { calcularPrecio, PromoType } from "../lib/utils";
+import { calcularPrecioFinal, PromoType, DailyPromoType } from "../lib/utils";
 import { useEffect, useState } from "react"
 import { supabase } from "../lib/supabase"
 import Image from "next/image"
-import { Check, Plus, Tag } from "lucide-react";
+import { Check, Plus, Tag, Zap } from "lucide-react";
 import Masonry from "react-masonry-css";
 import { useCart } from "../context/CartContext";
 
@@ -15,10 +15,10 @@ const breakpointColumnsObj = {
 };
 
 interface CategoriasType {
-    id: number,
-    nombre: string,
-    imagen: string,
-    precio: number,
+    id: number;
+    nombre: string;
+    imagen: string;
+    precio: number;
     productos: ProductoType[];
 }
 
@@ -28,7 +28,12 @@ interface ProductoType {
     stock: number;
 }
 
-function getPromoBadgeText(promoInfo: PromoType): string {
+const DIAS: Record<number, string> = {
+  0: "domingo", 1: "lunes", 2: "martes", 3: "miércoles",
+  4: "jueves", 5: "viernes", 6: "sábado"
+};
+
+function getPromoBadgeText(promoInfo: PromoType | DailyPromoType): string {
   if (promoInfo.desc_tipo === "porcentaje") return `${promoInfo.desc_valor}% OFF`;
   if (promoInfo.desc_tipo === "fijo") return `-$${promoInfo.desc_valor}`;
   if (promoInfo.desc_tipo === "pack" && promoInfo.cantidad_pack) return `${promoInfo.cantidad_pack} x $${promoInfo.desc_valor}`;
@@ -41,31 +46,40 @@ export default function page() {
     const [catSelected, setCatSelected] = useState<string>("todos")
     const [addedId, setAddedId] = useState<number | null>(null);
     const [promos, setPromos] = useState<PromoType[] | null>(null)
+    const [dailyPromos, setDailyPromos] = useState<DailyPromoType[] | null>(null)
 
     const { addToCart } = useCart()
 
     const fetchData = async () => {
         const ahora = new Date().toISOString()
+        const hoy = DIAS[new Date().getDay()]
 
+        // Fetch modelos
         const { data: modelosData, error: modelosError } = await supabase
             .from("modelos")
             .select("id, nombre, imagen, precio, productos (id, sabor, stock)")
-
         if (modelosError) console.error(modelosError)
         if (modelosData) {
-            const sorted = modelosData.sort((a, b) => a.precio - b.precio)
-            setModelos(sorted)
+            setModelos(modelosData.sort((a, b) => a.precio - b.precio))
         }
 
+        // Fetch regular promos
         const { data: promosData, error: promoError } = await supabase
             .from("promos")
             .select("*")
             .eq("activo", true)
             .lte("comienza", ahora)
             .gte("termina", ahora)
-
         if (promoError) console.error(promoError)
         if (promosData) setPromos(promosData)
+
+        // ✅ Fetch today's daily promos
+        const { data: dailyData, error: dailyError } = await supabase
+            .from("daily_promos")
+            .select("*")
+            .eq("dia_semana", hoy)
+        if (dailyError) console.error(dailyError)
+        if (dailyData) setDailyPromos(dailyData)
     }
 
     useEffect(() => { fetchData() }, [])
@@ -123,10 +137,14 @@ export default function page() {
                 columnClassName="flex flex-col gap-10 md:gap-2 items-center"
             >
                 {modFiltrados?.map(mod => {
-                    const { precioFinal, esPack, promoInfo } = calcularPrecio(mod.precio, mod.nombre, promos)
+                    const { precioFinal, esPack, promoInfo, esDiaria } = calcularPrecioFinal(
+                        mod.precio,
+                        mod.id,
+                        mod.nombre,
+                        promos,
+                        dailyPromos
+                    )
                     const tienePromo = promoInfo !== null
-
-                    // ✅ Check if ALL products are out of stock
                     const todoAgotado = mod.productos.every(p => p.stock === 0)
 
                     return (
@@ -140,21 +158,23 @@ export default function page() {
                                     height={320}
                                 />
 
-                                {/* Promo badge top-left */}
+                                {/* ✅ Badge: daily promo gets a distinct style with a lightning bolt */}
                                 {tienePromo && promoInfo && (
-                                    <div className="absolute top-3 left-3 flex items-center gap-1 bg-(--pink-75) text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg">
-                                        <Tag size={11} />
-                                        {getPromoBadgeText(promoInfo)}
+                                    <div className={`absolute top-3 left-3 flex items-center gap-1 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg
+                                        ${esDiaria ? "bg-blue-500 text-black" : "bg-(--pink-75)"}`}
+                                    >
+                                        {esDiaria ? <Zap size={11} /> : <Tag size={11} />}
+                                        {esDiaria ? "Promo del Día " : ""}{getPromoBadgeText(promoInfo)}
                                     </div>
                                 )}
 
                                 {/* Bottom-center price badge */}
                                 <div className="text-lg absolute bottom-2 left-1/2 -translate-x-1/2 flex flex-col w-fit text-center">
-                                    <div className="py-1 px-3 bg-white text-black text-base font-medium">
+                                    <div className="py-1 px-3 bg-white text-black text-base font-medium whitespace-nowrap">
                                         {mod.nombre.toUpperCase()}
                                     </div>
                                     {tienePromo ? (
-                                        <div className="py-1 px-3 my-2 bg-(--background) text-white font-medium">
+                                        <div className="py-1 px-3 my-2 bg-(--background) text-white font-medium whitespace-nowrap">
                                             {esPack && promoInfo
                                                 ? `${promoInfo.cantidad_pack} x $${promoInfo.desc_valor}`
                                                 : `$${precioFinal}`
@@ -169,7 +189,6 @@ export default function page() {
                             </div>
 
                             <div className="my-12 mx-4 flex flex-col">
-                                {/* ✅ If ALL products are out of stock, show one single AGOTADO */}
                                 {todoAgotado ? (
                                     <p className="text-center text-red-500 text-xs font-semibold tracking-widest py-2">
                                         AGOTADO
@@ -182,14 +201,12 @@ export default function page() {
                                             >
                                                 <div className="flex items-center gap-2">
                                                     {prod.sabor.toUpperCase()}
-                                                    {/* ✅ Show AGOTADO inline next to flavor name */}
                                                     {prod.stock === 0 && (
                                                         <span className="text-red-500 text-[10px] font-bold tracking-wider">
                                                             AGOTADO
                                                         </span>
                                                     )}
                                                 </div>
-                                                {/* ✅ Only show add button if in stock */}
                                                 {prod.stock > 0 && (
                                                     <button
                                                         className="cursor-pointer hover:bg-(--pink-75) rounded-md"

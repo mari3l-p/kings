@@ -1,8 +1,8 @@
 import Link from "next/link";
 import BigBtn from "./components/BigBtn";
-import Image from "next/image";
 import PromoImg from "./components/PromoImg";
 import MasVendidos from "./components/MasVendido";
+import DailyPromoBanner from "./components/DailyPromoImg";
 
 
 
@@ -36,17 +36,7 @@ export default function Home() {
         </Link>
       </div>
 
-      <div>
-        <Image
-          src="/heroPic.png"
-          alt="heroImg smoking"
-          width={500}
-          height={500}
-          className="md:h-150 md:w-125 rounded-sm"
-        >
-
-        </Image>
-      </div>
+      <DailyPromoBanner/>
     </div>
 
     <div>

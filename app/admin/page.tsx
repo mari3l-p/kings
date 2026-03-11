@@ -6,6 +6,7 @@ import CrearPromocion from "./promos/page"
 import { supabase } from "../lib/supabase"
 import { useRouter } from "next/navigation"
 import GestionOrdenes from "../components/GestionOrdenes"
+import DailyPromos from "../components/DailyPromos"
 
 const AdminPage = () => {
     const [tab, setTab] = useState("stats")
@@ -69,6 +70,7 @@ const AdminPage = () => {
                             {[
                                 { id: "stats", label: "Estadísticas", icon: BarChart3 },
                                 { id: "promos", label: "Promociones", icon: Tag },
+                                { id: "dailyPromos", label: "Promociones Diarias", icon: Tag },
                                 { id: "productos", label: "Inventario", icon: Package }
                             ].map((item) => (
                                 <button
@@ -107,6 +109,9 @@ const AdminPage = () => {
                     <button onClick={() => setTab("promos")} className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all ${tab === "promos" ? "bg-(--pink-75)" : "text-gray-400 hover:bg-white/5"}`}>
                         <Tag size={22} /> <span className="text-sm font-bold uppercase tracking-widest">Promociones</span>
                     </button>
+                    <button onClick={() => setTab("dailyPromos")} className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all ${tab === "dailyPromos" ? "bg-(--pink-75)" : "text-gray-400 hover:bg-white/5"}`}>
+                        <Tag size={22} /> <span className="text-sm font-bold uppercase tracking-widest">Daily Promos</span>
+                    </button>
                     <button onClick={() => setTab("productos")} className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all ${tab === "productos" ? "bg-(--pink-75)" : "text-gray-400 hover:bg-white/5"}`}>
                         <Package size={22} /> <span className="text-sm font-bold uppercase tracking-widest">Inventario</span>
                     </button>
@@ -138,6 +143,7 @@ const AdminPage = () => {
                         )}
                         {tab === "promos" && <CrearPromocion />}
                         {tab === "productos" && <GestionOrdenes />}
+                        {tab === "dailyPromos" && <DailyPromos/>}
                     </div>
                 </div>
             </main>
