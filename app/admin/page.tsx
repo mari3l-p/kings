@@ -6,7 +6,7 @@ import CrearPromocion from "./promos/page"
 import { supabase } from "../lib/supabase"
 import { useRouter } from "next/navigation"
 import GestionOrdenes from "../components/GestionOrdenes"
-import DailyPromos from "../components/DailyPromos"
+import DailyPromos from "../components/PromosDiarias"
 
 const AdminPage = () => {
     const [tab, setTab] = useState("stats")

@@ -32,11 +32,11 @@ export default function DailyPromoBanner() {
                         <h2 className="text-white text-3xl md:text-5xl font-medium uppercase mb-12 text-center tracking-tighter">
                             Promo del <span className="text-(--pink-75)">Día</span>
                         </h2>
-                        <div className="w-full md:w-150 md:h-200">
+                        <div className="w-full md:w-150 md:h-200 lg:w-100 lg:h-125">
                             <img 
                                 src={promo.imagen_url} 
                                 alt={promo.nombre} 
-                                className="w-full h-full rounded-2xl object-cover"
+                                className="w-full h-full rounded-2xl"
                             />
                         </div>
                     </div>
