@@ -1,7 +1,5 @@
 "use client"
 import { calcularPrecio, PromoType } from "../lib/utils";
-
-
 import { useEffect, useState } from "react"
 import { supabase } from "../lib/supabase"
 import Image from "next/image"
@@ -30,9 +28,6 @@ interface ProductoType {
     stock: number;
 }
 
-
-
-// ✅ Helper to generate the badge text based on promo type
 function getPromoBadgeText(promoInfo: PromoType): string {
   if (promoInfo.desc_tipo === "porcentaje") return `${promoInfo.desc_valor}% OFF`;
   if (promoInfo.desc_tipo === "fijo") return `-$${promoInfo.desc_valor}`;
@@ -57,7 +52,10 @@ export default function page() {
             .select("id, nombre, imagen, precio, productos (id, sabor, stock)")
 
         if (modelosError) console.error(modelosError)
-        if (modelosData) setModelos(modelosData)
+        if (modelosData) {
+            const sorted = modelosData.sort((a, b) => a.precio - b.precio)
+            setModelos(sorted)
+        }
 
         const { data: promosData, error: promoError } = await supabase
             .from("promos")
@@ -70,9 +68,7 @@ export default function page() {
         if (promosData) setPromos(promosData)
     }
 
-    useEffect(() => {
-        fetchData()
-    }, [])
+    useEffect(() => { fetchData() }, [])
 
     const categorias = ["todos", "vhill", "waka", "lost mary", "fasta", "iplay", "elf bar", "funky", "elux", "snoopy"];
 
@@ -89,7 +85,6 @@ export default function page() {
             imgMod: mod.imagen,
             modelo: mod.nombre,
         });
-
         setAddedId(prod.id);
         setTimeout(() => setAddedId(null), 1500);
     };
@@ -131,6 +126,9 @@ export default function page() {
                     const { precioFinal, esPack, promoInfo } = calcularPrecio(mod.precio, mod.nombre, promos)
                     const tienePromo = promoInfo !== null
 
+                    // ✅ Check if ALL products are out of stock
+                    const todoAgotado = mod.productos.every(p => p.stock === 0)
+
                     return (
                         <div key={mod.id} className="border-2 border-(--purple) rounded-2xl w-xs bg-black">
                             <div className="relative">
@@ -142,7 +140,7 @@ export default function page() {
                                     height={320}
                                 />
 
-                                {/* ✅ Promo badge top-left */}
+                                {/* Promo badge top-left */}
                                 {tienePromo && promoInfo && (
                                     <div className="absolute top-3 left-3 flex items-center gap-1 bg-(--pink-75) text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg">
                                         <Tag size={11} />
@@ -150,15 +148,13 @@ export default function page() {
                                     </div>
                                 )}
 
-                                {/* Existing bottom-center price badge */}
+                                {/* Bottom-center price badge */}
                                 <div className="text-lg absolute bottom-2 left-1/2 -translate-x-1/2 flex flex-col w-fit text-center">
                                     <div className="py-1 px-3 bg-white text-black text-base font-medium">
                                         {mod.nombre.toUpperCase()}
                                     </div>
-
                                     {tienePromo ? (
                                         <div className="py-1 px-3 my-2 bg-(--background) text-white font-medium">
-                                            
                                             {esPack && promoInfo
                                                 ? `${promoInfo.cantidad_pack} x $${promoInfo.desc_valor}`
                                                 : `$${precioFinal}`
@@ -173,25 +169,43 @@ export default function page() {
                             </div>
 
                             <div className="my-12 mx-4 flex flex-col">
-                                {mod.productos.map(prod => (
-                                    prod.stock > 0 && (
+                                {/* ✅ If ALL products are out of stock, show one single AGOTADO */}
+                                {todoAgotado ? (
+                                    <p className="text-center text-red-500 text-xs font-semibold tracking-widest py-2">
+                                        AGOTADO
+                                    </p>
+                                ) : (
+                                    mod.productos.map(prod => (
                                         <div key={prod.id}>
-                                            <div className="flex justify-between px-4 py-1 my-1 fondo-dark rounded-sm text-sm">
-                                                <div>{prod.sabor.toUpperCase()}</div>
-                                                <button
-                                                    className="cursor-pointer hover:bg-(--pink-75) rounded-md"
-                                                    onClick={() => handleAddToCart(prod, mod)}
-                                                >
-                                                    {addedId === prod.id
-                                                        ? <Check size={22} className="animate-in zoom-in" />
-                                                        : <Plus size={22} />
-                                                    }
-                                                </button>
+                                            <div className={`flex justify-between px-4 py-1 my-1 fondo-dark rounded-sm text-sm
+                                                ${prod.stock === 0 ? "opacity-50" : ""}`}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    {prod.sabor.toUpperCase()}
+                                                    {/* ✅ Show AGOTADO inline next to flavor name */}
+                                                    {prod.stock === 0 && (
+                                                        <span className="text-red-500 text-[10px] font-bold tracking-wider">
+                                                            AGOTADO
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {/* ✅ Only show add button if in stock */}
+                                                {prod.stock > 0 && (
+                                                    <button
+                                                        className="cursor-pointer hover:bg-(--pink-75) rounded-md"
+                                                        onClick={() => handleAddToCart(prod, mod)}
+                                                    >
+                                                        {addedId === prod.id
+                                                            ? <Check size={22} className="animate-in zoom-in" />
+                                                            : <Plus size={22} />
+                                                        }
+                                                    </button>
+                                                )}
                                             </div>
                                             <hr className="text-(--pink-15) my-2" />
                                         </div>
-                                    )
-                                ))}
+                                    ))
+                                )}
                             </div>
                         </div>
                     )

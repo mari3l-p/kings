@@ -328,7 +328,7 @@ Pago: ${formData.pago.join(", ")}
               <h3>TELÉFONO</h3>
               <input
                 type="tel"
-                placeholder="529684574887"
+                placeholder="Ej. 5296845..."
                 className="mt-3 w-full bg-white/5 border border-white/10 p-4 rounded-xl outline-none focus:border-(--pink-75)"
                 value={formData.telefono}
                 onChange={(e) => setFormData({ ...formData, telefono: e.target.value.replace(/\D/g, "") })}
