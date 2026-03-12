@@ -98,6 +98,7 @@ export default function page() {
             cantidad: 1,
             imgMod: mod.imagen,
             modelo: mod.nombre,
+            modeloId: mod.id,
         });
         setAddedId(prod.id);
         setTimeout(() => setAddedId(null), 1500);

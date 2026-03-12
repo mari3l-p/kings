@@ -46,8 +46,6 @@ export default function GestionOrdenes() {
             acc[key] = {
                 nombre_cliente: p.nombre_cliente,
                 telefono: p.telefono,
-                entrega: p.entrega,
-                pago: p.pago,
                 created_at: p.created_at,
                 items: [],
                 totalVenta: 0,

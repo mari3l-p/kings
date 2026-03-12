@@ -9,6 +9,7 @@ type CartItem = {
     cantidad: number,
     imgMod: string,
     modelo: string,
+    modeloId: number,
 }
 
 type CartContextType = {
