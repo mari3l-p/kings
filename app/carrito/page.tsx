@@ -3,6 +3,7 @@
 import { useCart } from "../context/CartContext";
 import { ChevronLeft, MessageCircle, Minus, Plus, ShoppingBag, Trash2, X, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import MapSelector from "../components/UbicacionExacta";
 import MsgSend from "../components/MsgSend";
 import { supabase } from "../lib/supabase";
@@ -17,7 +18,7 @@ interface CartItem {
   id: number;
   nombre: string;
   modelo: string;
-  modeloId: number; // ✅ needed for daily promo matching
+  modeloId: number;
   precio: number;
   cantidad: number;
   imgMod: string;
@@ -50,7 +51,6 @@ export default function Carrito({ isOpen, setIsOpen }: CarritoProps) {
       const ahora = new Date().toISOString();
       const hoy = DIAS[new Date().getDay()];
 
-      // Regular promos
       const { data: promosData } = await supabase
         .from("promos")
         .select("*")
@@ -59,7 +59,6 @@ export default function Carrito({ isOpen, setIsOpen }: CarritoProps) {
         .gte("termina", ahora);
       setPromos(promosData ?? []);
 
-      // ✅ Daily promos
       const { data: dailyData } = await supabase
         .from("daily_promos")
         .select("*")
@@ -75,16 +74,10 @@ export default function Carrito({ isOpen, setIsOpen }: CarritoProps) {
     return acc;
   }, {} as Record<string, number>);
 
-  // ✅ Total now uses calcularPrecioFinal (respects daily promos)
   const total = cart.reduce((acc, item) => {
     const totalCantidadModelo = cantidadPorModelo[item.modelo.toLowerCase()];
     const { precioFinal } = calcularPrecioFinal(
-      item.precio,
-      item.modeloId,
-      item.modelo,
-      promos,
-      dailyPromos,
-      totalCantidadModelo
+      item.precio, item.modeloId, item.modelo, promos, dailyPromos, totalCantidadModelo
     );
     const itemsDeEsteModelo = cart.filter(i => i.modelo.toLowerCase() === item.modelo.toLowerCase());
     if (itemsDeEsteModelo[0].id === item.id) {
@@ -145,12 +138,7 @@ Pago: ${formData.pago.join(", ")}
     const itemsToInsert = cart.map((item) => {
       const totalCantidadModelo = cantidadPorModelo[item.modelo.toLowerCase()];
       const { precioFinal } = calcularPrecioFinal(
-        item.precio,
-        item.modeloId,
-        item.modelo,
-        promos,
-        dailyPromos,
-        totalCantidadModelo
+        item.precio, item.modeloId, item.modelo, promos, dailyPromos, totalCantidadModelo
       );
       const precioProrrateado = Math.round((Number(precioFinal) / totalCantidadModelo) * item.cantidad);
       return {
@@ -158,8 +146,6 @@ Pago: ${formData.pago.join(", ")}
         telefono: formData.telefono,
         total: precioProrrateado,
         productos: item.id,
-        entrega: formData.entrega,
-        pago: formData.pago.join(", "),
       };
     });
 
@@ -223,7 +209,7 @@ Pago: ${formData.pago.join(", ")}
 
         {/* Step 1 — Cart items */}
         {step === 1 ? (
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {cart.length === 0 ? (
               <div className="text-center mt-20">
                 <p className="text-gray-400 mb-4">Tu carrito está vacío.</p>
@@ -235,12 +221,7 @@ Pago: ${formData.pago.join(", ")}
               cart.map((item: CartItem) => {
                 const totalCantidadModelo = cantidadPorModelo[item.modelo.toLowerCase()];
                 const { esPack, promoInfo, esDiaria } = calcularPrecioFinal(
-                  item.precio,
-                  item.modeloId,
-                  item.modelo,
-                  promos,
-                  dailyPromos,
-                  totalCantidadModelo
+                  item.precio, item.modeloId, item.modelo, promos, dailyPromos, totalCantidadModelo
                 );
                 const packActivo = esPack && promoInfo;
 
@@ -256,7 +237,6 @@ Pago: ${formData.pago.join(", ")}
                   const precioUnitarioPack = promoInfo.desc_valor / packSize;
                   precioEsteItem = Math.round((enPack * precioUnitarioPack) + (sobrante * item.precio));
                 } else if (promoInfo && !esPack) {
-                  // ✅ fijo/porcentaje: use calcularPrecioFinal result directly
                   const { precioFinal } = calcularPrecioFinal(
                     item.precio, item.modeloId, item.modelo, promos, dailyPromos, item.cantidad
                   );
@@ -266,61 +246,73 @@ Pago: ${formData.pago.join(", ")}
                 }
 
                 return (
-                  <div key={item.id} className="p-4 bg-white/5 rounded-2xl border border-white/10 flex flex-col gap-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-sm uppercase text-(--pink-75)">{item.modelo}</h4>
-                          {/* ✅ Show daily promo indicator on item */}
-                          {esDiaria && (
-                            <span className="flex items-center gap-0.5 text-[10px] font-bold text-yellow-400">
-                              <Zap size={10} /> HOY
-                            </span>
+                  <div key={item.id} className="p-3 bg-white/5 rounded-2xl border border-white/10 flex gap-3">
+                    
+                    {/* ✅ Model image */}
+                    {item.imgMod && (
+                      <div className="shrink-0">
+                        <Image
+                          src={item.imgMod}
+                          alt={item.modelo}
+                          width={72}
+                          height={72}
+                          className="rounded-xl object-cover w-18 h-18"
+                        />
+                      </div>
+                    )}
+
+                    {/* Content */}
+                    <div className="flex-1 flex flex-col gap-2 min-w-0">
+                      <div className="flex justify-between items-start">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="font-bold text-xs uppercase text-(--pink-75) truncate">{item.modelo}</h4>
+                            {esDiaria && (
+                              <span className="flex items-center gap-0.5 text-[9px] font-bold text-yellow-400 shrink-0">
+                                <Zap size={9} /> HOY
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-gray-300 text-sm truncate">{item.nombre}</p>
+                        </div>
+                        <button onClick={() => removeFromCart(item.id)} className="text-gray-500 hover:text-red-500 shrink-0 ml-2">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        {/* Quantity controls */}
+                        <div className="flex items-center gap-2 bg-black/40 rounded-lg p-1 border border-white/10">
+                          <button onClick={() => restToCart(item)} className="p-0.5 hover:text-(--pink-75)"><Minus size={14} /></button>
+                          <span className="w-4 text-center font-bold text-sm">{item.cantidad}</span>
+                          <button onClick={() => addToCart(item)} className="p-0.5 hover:text-(--pink-75)"><Plus size={14} /></button>
+                        </div>
+
+                        {/* Price */}
+                        <div className="text-right">
+                          {packActivo && enPack > 0 ? (
+                            <div className="flex flex-col items-end">
+                              <span className={`font-black text-lg italic leading-none ${esDiaria ? "text-yellow-400" : "text-(--pink-75)"}`}>
+                                ${precioEsteItem}
+                              </span>
+                              <span className={`text-[9px] opacity-70 ${esDiaria ? "text-yellow-400" : "text-(--pink-75)"}`}>
+                                {enPack > 0 && sobrante > 0
+                                  ? `${enPack} en promo + ${sobrante} normal`
+                                  : `${promoInfo!.cantidad_pack} x $${promoInfo!.desc_valor}`}
+                              </span>
+                              <span className="text-gray-500 text-[9px] line-through">${item.precio * item.cantidad}</span>
+                            </div>
+                          ) : promoInfo && !esPack ? (
+                            <div className="flex flex-col items-end">
+                              <span className={`font-black text-lg italic leading-none ${esDiaria ? "text-yellow-400" : "text-(--pink-75)"}`}>
+                                ${precioEsteItem}
+                              </span>
+                              <span className="text-gray-500 text-[9px] line-through">${item.precio * item.cantidad}</span>
+                            </div>
+                          ) : (
+                            <span className="text-lg font-bold">${precioEsteItem}</span>
                           )}
                         </div>
-                        <p className="text-gray-300">{item.nombre}</p>
-                      </div>
-                      <button onClick={() => removeFromCart(item.id)} className="text-gray-500 hover:text-red-500">
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-
-                    <div className="flex justify-between items-end">
-                      <div className="flex items-center gap-3 bg-black/40 rounded-lg p-1 border border-white/10">
-                        <button onClick={() => restToCart(item)} className="p-1 hover:text-(--pink-75)"><Minus size={16} /></button>
-                        <span className="w-4 text-center font-bold">{item.cantidad}</span>
-                        <button onClick={() => addToCart(item)} className="p-1 hover:text-(--pink-75)"><Plus size={16} /></button>
-                      </div>
-
-                      <div className="text-right">
-                        {packActivo && enPack > 0 ? (
-                          <div className="flex flex-col items-end">
-                            <span className={`font-black text-xl italic leading-none ${esDiaria ? "text-yellow-400" : "text-(--pink-75)"}`}>
-                              ${precioEsteItem}
-                            </span>
-                            <span className={`text-[10px] opacity-70 ${esDiaria ? "text-yellow-400" : "text-(--pink-75)"}`}>
-                              {enPack > 0 && sobrante > 0
-                                ? `${enPack} en promo + ${sobrante} normal`
-                                : `Promo: ${promoInfo!.cantidad_pack} x $${promoInfo!.desc_valor}`}
-                            </span>
-                            <span className="text-gray-500 text-[10px] line-through">
-                              ${item.precio * item.cantidad}
-                            </span>
-                          </div>
-                        ) : promoInfo && !esPack ? (
-                          <div className="flex flex-col items-end">
-                            <span className={`font-black text-xl italic leading-none ${esDiaria ? "text-yellow-400" : "text-(--pink-75)"}`}>
-                              ${precioEsteItem}
-                            </span>
-                            <span className="text-gray-500 text-[10px] line-through">
-                              ${item.precio * item.cantidad}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-end">
-                            <span className="text-xl font-bold">${precioEsteItem}</span>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -406,7 +398,7 @@ Pago: ${formData.pago.join(", ")}
           </div>
         )}
 
-        {/* Footer — ✅ sin envío */}
+        {/* Footer */}
         <div className="p-6 bg-zinc-950 border-t border-white/10 space-y-4">
           <div className="flex justify-between items-end">
             <span className="text-gray-400 text-sm">Total:</span>
