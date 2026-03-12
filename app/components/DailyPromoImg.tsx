@@ -15,7 +15,8 @@ export default function DailyPromoBanner() {
                 .select("*")
                 .eq("dia_semana", hoy)
                 .eq("activo", true)
-                .single() // Solo queremos una promo por día
+                .limit(1) // <--- Trae solo la primera que encuentre
+                .maybeSingle() // <--- Evita que el código truene si hay varias o ninguna
 
             if (data) setPromo(data)
         }

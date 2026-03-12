@@ -158,7 +158,7 @@ export default function page() {
                                     height={320}
                                 />
 
-                                {/* ✅ Badge: daily promo gets a distinct style with a lightning bolt */}
+                                {/*Badge: daily promo gets a distinct style with a lightning bolt */}
                                 {tienePromo && promoInfo && (
                                     <div className={`absolute top-3 left-3 flex items-center gap-1 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg
                                         ${esDiaria ? "bg-blue-500 text-black" : "bg-(--pink-75)"}`}
@@ -196,7 +196,7 @@ export default function page() {
                                 ) : (
                                     mod.productos.map(prod => (
                                         <div key={prod.id}>
-                                            <div className={`flex justify-between px-4 py-1 my-1 fondo-dark rounded-sm text-sm
+                                            <div className={`flex justify-between  px-4 py-1 my-1 fondo-dark rounded-sm text-sm
                                                 ${prod.stock === 0 ? "opacity-50" : ""}`}
                                             >
                                                 <div className="flex items-center gap-2">

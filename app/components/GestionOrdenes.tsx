@@ -1,13 +1,11 @@
 "use client"
 import { useState, useEffect } from "react"
 import { supabase } from "@/app/lib/supabase"
-import { Check, X } from "lucide-react"
 
 interface productosTipo {
     id: number;
     sabor: string;
     modelo: string;
-    stock: number;
 }
 
 interface ordenesTipo {
@@ -16,106 +14,106 @@ interface ordenesTipo {
     productos: productosTipo | null;
     telefono: string;
     total: number;
-    estatus: string;
+    entrega: string;
+    pago: string;
+    created_at: string;
 }
 
 export default function GestionOrdenes() {
     const [pedidos, setPedidos] = useState<ordenesTipo[]>([])
+    const [loading, setLoading] = useState(true)
 
     const cargarPedidos = async () => {
+        setLoading(true)
         const { data, error } = await supabase
             .from("ordenes")
-            .select("*, productos(id, sabor, modelo, stock)")
+            .select("*, productos(id, sabor, modelo)")
             .order("id", { ascending: false })
-        
-        if (error) {
-            console.error("Error cargando:", error)
-        } else {
-            setPedidos(data as any as ordenesTipo[])
-        }
-    }
 
-    const actualizarEstado = async (id: number, nuevoEstado: string, prod: productosTipo | null) => {
-        // 1. OPTIMISTIC UPDATE: Change UI immediately
-        const previousState = [...pedidos];
-        setPedidos(prev => prev.map(p => 
-            p.id === id ? { ...p, estatus: nuevoEstado } : p
-        ));
-
-        try {
-            // 2. Update Order Status
-            const { error: updateError } = await supabase
-                .from("ordenes")
-                .update({ estatus: nuevoEstado })
-                .eq("id", id);
-
-            if (updateError) throw updateError;
-
-            // 3. Update Stock only if sold
-            if (nuevoEstado === "vendido" && prod) {
-                const { error: stockError } = await supabase
-                    .from("productos")
-                    .update({ stock: prod.stock - 1 })
-                    .eq("id", prod.id);
-                
-                if (stockError) throw stockError;
-            }
-
-            // 4. Final Sync
-            await cargarPedidos();
-            
-        } catch (error: any) {
-            console.error("Update failed:", error);
-            alert(`Error: ${error.message}. Check your Supabase RLS Policies!`);
-            // Revert UI if DB failed
-            setPedidos(previousState);
-        }
+        if (error) console.error("Error cargando:", error)
+        else setPedidos(data as any as ordenesTipo[])
+        setLoading(false)
     }
 
     useEffect(() => { cargarPedidos() }, [])
 
+    // Group orders by cliente+telefono+created_at to show them as one sale
+    const pedidosAgrupados = pedidos.reduce((acc, p) => {
+        // Use telefono + truncated timestamp as group key (same person, same minute = same order)
+        const fecha = new Date(p.created_at)
+        const key = `${p.telefono}-${fecha.getFullYear()}${fecha.getMonth()}${fecha.getDate()}${fecha.getHours()}${fecha.getMinutes()}`
+        if (!acc[key]) {
+            acc[key] = {
+                nombre_cliente: p.nombre_cliente,
+                telefono: p.telefono,
+                entrega: p.entrega,
+                pago: p.pago,
+                created_at: p.created_at,
+                items: [],
+                totalVenta: 0,
+            }
+        }
+        acc[key].items.push(p)
+        acc[key].totalVenta += p.total
+        return acc
+    }, {} as Record<string, any>)
+
+    const ventas = Object.values(pedidosAgrupados)
+
+    if (loading) return (
+        <div className="text-center py-20 text-gray-500">Cargando historial...</div>
+    )
+
     return (
         <div className="space-y-4">
-            {pedidos.length === 0 ? (
-                <p className="text-gray-500 text-center py-10">No hay órdenes registradas.</p>
+            <div className="flex justify-between items-center mb-6">
+                <p className="text-gray-400 text-sm">{ventas.length} ventas registradas</p>
+                <button
+                    onClick={cargarPedidos}
+                    className="text-xs text-gray-500 hover:text-(--pink-75) transition-colors"
+                >
+                    Actualizar
+                </button>
+            </div>
+
+            {ventas.length === 0 ? (
+                <p className="text-gray-500 text-center py-10">No hay ventas registradas.</p>
             ) : (
-                pedidos.map((p) => (
-                    <div key={p.id} className="bg-white/5 border border-white/10 p-5 rounded-2xl flex items-center justify-between">
-                        <div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className={`w-2 h-2 rounded-full ${p.estatus === 'pendiente' ? 'bg-yellow-500' : p.estatus === 'vendido' ? 'bg-green-500' : 'bg-red-500'}`} />
-                                <h4 className="text-white font-bold uppercase text-sm">
-                                    {p.productos?.sabor} - {p.productos?.modelo}
-                                </h4>
+                ventas.map((venta, i) => (
+                    <div key={i} className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                        {/* Sale header */}
+                        <div className="flex justify-between items-start p-4 border-b border-white/5">
+                            <div>
+                                <p className="font-bold text-white uppercase text-sm">{venta.nombre_cliente}</p>
+                                <p className="text-gray-500 text-xs mt-0.5">{venta.telefono}</p>
                             </div>
-                            <p className="text-gray-500 text-xs">
-                                Cliente: {p.nombre_cliente} ({p.telefono}) • ${p.total}
-                            </p>
-                            {p.productos && (
-                                <p className="text-[10px] text-gray-600 mt-1 italic">Stock: {p.productos.stock}</p>
-                            )}
+                            <div className="text-right">
+                                <p className="text-white font-black text-lg">${venta.totalVenta}</p>
+                                <p className="text-gray-500 text-[10px]">
+                                    {new Date(venta.created_at).toLocaleDateString("es-MX", {
+                                        day: "numeric", month: "short", year: "numeric",
+                                        hour: "2-digit", minute: "2-digit"
+                                    })}
+                                </p>
+                            </div>
                         </div>
 
-                        <div className="flex gap-2">
-                            {p.estatus === "pendiente" && (
-                                <>
-                                    <button 
-                                        onClick={() => actualizarEstado(p.id, "vendido", p.productos)}
-                                        className="p-2 bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500 hover:text-white transition-all"
-                                    >
-                                        <Check size={18} />
-                                    </button>
-                                    <button 
-                                        onClick={() => actualizarEstado(p.id, "cancelado", null)}
-                                        className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all"
-                                    >
-                                        <X size={18} />
-                                    </button>
-                                </>
-                            )}
-                            <span className="text-[10px] text-gray-400 uppercase font-bold self-center ml-4">
-                                {p.estatus}
-                            </span>
+                        {/* Items */}
+                        <div className="px-4 py-2 space-y-1">
+                            {venta.items.map((item: ordenesTipo) => (
+                                <div key={item.id} className="flex justify-between text-xs py-1">
+                                    <span className="text-gray-300">
+                                        {item.productos?.modelo} — {item.productos?.sabor}
+                                    </span>
+                                    <span className="text-gray-400">${item.total}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-4 py-2 bg-white/3 flex gap-4 text-[10px] text-gray-500 uppercase font-bold tracking-wider">
+                            <span>📦 {venta.entrega}</span>
+                            <span>💳 {venta.pago}</span>
                         </div>
                     </div>
                 ))

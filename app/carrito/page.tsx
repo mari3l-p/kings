@@ -119,7 +119,7 @@ Pago: ${formData.pago.join(", ")}
     window.open(`https://wa.me/529671614636?text=${encodeURIComponent(message)}`, "_blank");
   };
 
-  const handleGenerarOrden = async () => {
+const handleGenerarOrden = async () => {
     const itemsToInsert = cart.map((item) => {
       const totalCantidadModelo = cantidadPorModelo[item.modelo.toLowerCase()];
       const { precioFinal } = calcularPrecio(item.precio, item.modelo, promos, totalCantidadModelo);
@@ -129,12 +129,13 @@ Pago: ${formData.pago.join(", ")}
         telefono: formData.telefono,
         total: precioProrrateado,
         productos: item.id,
-        estatus: "pendiente",
+        entrega: formData.entrega,
+        pago: formData.pago.join(", "),
       };
     });
     const { error } = await supabase.from("ordenes").insert(itemsToInsert);
     if (error) console.error(error);
-  };
+};
 
   const sendOrder = () => {
     if (!validateForm()) return;
