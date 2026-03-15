@@ -107,12 +107,6 @@ export default function GestionOrdenes() {
                                 </div>
                             ))}
                         </div>
-
-                        {/* Footer */}
-                        <div className="px-4 py-2 bg-white/3 flex gap-4 text-[10px] text-gray-500 uppercase font-bold tracking-wider">
-                            <span>📦 {venta.entrega}</span>
-                            <span>💳 {venta.pago}</span>
-                        </div>
                     </div>
                 ))
             )}
