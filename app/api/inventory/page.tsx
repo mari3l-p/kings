@@ -1,7 +1,9 @@
 "use client"
 
-import { useState, useRef } from "react"
-import { Upload, CheckCircle, AlertCircle, FileSpreadsheet, RefreshCw, ChevronRight, Sheet } from "lucide-react"
+import { useState, useRef, useEffect } from "react"
+import { Upload, CheckCircle, AlertCircle, FileSpreadsheet, RefreshCw, ChevronRight, Sheet, LogIn } from "lucide-react"
+import { supabase } from "@/app/lib/supabase"
+import type { User } from "@supabase/supabase-js"
 
 type UploadResult = {
   success: boolean
@@ -15,7 +17,69 @@ type UploadResult = {
 
 type Step = "idle" | "loadingSheets" | "pickSheet" | "uploading" | "done"
 
+// ── Login screen ──────────────────────────────────────────────
+function LoginScreen({ onLogin }: { onLogin: (u: User) => void }) {
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleLogin() {
+    setLoading(true)
+    setError(null)
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error || !data.user) {
+      setError("Correo o contraseña incorrectos")
+      setLoading(false)
+    } else {
+      onLogin(data.user)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center p-6">
+      <div className="w-full max-w-sm space-y-6">
+        <div>
+          <h1 className="text-2xl font-black text-white">Admin</h1>
+          <p className="text-gray-500 text-sm mt-1">Inicia sesión para continuar</p>
+        </div>
+        <div className="space-y-3">
+          <input
+            type="email"
+            placeholder="Correo"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleLogin()}
+            className="w-full bg-white/5 border border-white/10 p-4 rounded-xl outline-none focus:border-(--pink-75) text-white placeholder:text-gray-600"
+          />
+          <input
+            type="password"
+            placeholder="Contraseña"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleLogin()}
+            className="w-full bg-white/5 border border-white/10 p-4 rounded-xl outline-none focus:border-(--pink-75) text-white placeholder:text-gray-600"
+          />
+        </div>
+        {error && <p className="text-red-400 text-sm">{error}</p>}
+        <button
+          onClick={handleLogin}
+          disabled={loading || !email || !password}
+          className="w-full flex justify-center items-center gap-2 bg-(--pink-75) py-4 rounded-2xl font-bold text-white disabled:opacity-40 transition-all active:scale-95"
+        >
+          {loading ? <RefreshCw size={18} className="animate-spin" /> : <LogIn size={18} />}
+          {loading ? "Entrando..." : "Entrar"}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────
 export default function UploadInventory() {
+  const [user, setUser] = useState<User | null>(null)
+  const [checkingAuth, setCheckingAuth] = useState(true)
+
   const [step, setStep] = useState<Step>("idle")
   const [sheets, setSheets] = useState<string[]>([])
   const [selectedSheet, setSelectedSheet] = useState<string | null>(null)
@@ -24,7 +88,27 @@ export default function UploadInventory() {
   const [showNotFound, setShowNotFound] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Step 1: file selected → fetch sheet names
+  // ── Auth check on mount
+  useEffect(() => {
+  supabase.auth.getSession().then(({ data }) => {
+    setUser(data.session?.user ?? null)
+    setCheckingAuth(false)
+  })
+}, [])
+
+  // ── Show blank while checking, then login if no user
+  if (checkingAuth) return <div className="bg-black min-h-screen" />
+  if (!user) return <LoginScreen onLogin={setUser} />
+
+  async function getToken(): Promise<string> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    return session?.access_token ?? ""
+  } catch {
+    return ""
+  }
+}
+
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -40,11 +124,15 @@ export default function UploadInventory() {
     formData.append("getSheets", "true")
 
     try {
-      const res = await fetch("/api/inventory/upload", { method: "POST", body: formData })
+      const token = await getToken()
+      const res = await fetch("/api/inventory/upload", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+        body: formData,
+      })
       const data = await res.json()
 
       if (data.sheets?.length === 1) {
-        // Only one sheet — skip picker and upload directly
         setSelectedSheet(data.sheets[0])
         await uploadWithSheet(file, data.sheets[0])
       } else {
@@ -58,7 +146,6 @@ export default function UploadInventory() {
     }
   }
 
-  // Step 2: sheet selected → upload
   async function uploadWithSheet(file: File, sheet: string) {
     setStep("uploading")
     const formData = new FormData()
@@ -66,7 +153,12 @@ export default function UploadInventory() {
     formData.append("sheetName", sheet)
 
     try {
-      const res = await fetch("/api/inventory/upload", { method: "POST", body: formData })
+      const token = await getToken()
+      const res = await fetch("/api/inventory/upload", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+        body: formData,
+      })
       const data = await res.json()
       setResult(data)
     } catch {
@@ -92,7 +184,6 @@ export default function UploadInventory() {
         <p className="text-gray-400 text-sm">Sube el Excel de stock y se actualizará automáticamente.</p>
       </div>
 
-      {/* Step: idle or done — show drop zone */}
       {(step === "idle" || step === "done") && (
         <div
           onClick={() => inputRef.current?.click()}
@@ -114,7 +205,6 @@ export default function UploadInventory() {
         </div>
       )}
 
-      {/* Step: loading sheets */}
       {step === "loadingSheets" && (
         <div className="border-2 border-dashed border-white/15 rounded-2xl p-10 text-center">
           <div className="flex flex-col items-center gap-3">
@@ -124,7 +214,6 @@ export default function UploadInventory() {
         </div>
       )}
 
-      {/* Step: pick sheet */}
       {step === "pickSheet" && (
         <div className="border-2 border-white/10 rounded-2xl p-6 space-y-4">
           <div className="flex items-center gap-2 text-white font-bold">
@@ -147,13 +236,10 @@ export default function UploadInventory() {
               </button>
             ))}
           </div>
-          <button onClick={reset} className="text-gray-500 text-xs hover:text-white">
-            Cancelar
-          </button>
+          <button onClick={reset} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
         </div>
       )}
 
-      {/* Step: uploading */}
       {step === "uploading" && (
         <div className="border-2 border-dashed border-white/15 rounded-2xl p-10 text-center">
           <div className="flex flex-col items-center gap-3">
@@ -164,7 +250,6 @@ export default function UploadInventory() {
         </div>
       )}
 
-      {/* Result */}
       {step === "done" && result && (
         <div className={`rounded-2xl border p-5 space-y-4 ${result.success ? "border-green-500/30 bg-green-500/5" : "border-red-500/30 bg-red-500/5"}`}>
           {result.success ? (
