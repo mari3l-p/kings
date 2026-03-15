@@ -84,7 +84,7 @@ export default function page() {
 
     useEffect(() => { fetchData() }, [])
 
-    const categorias = ["todos", "vhill", "waka", "lost mary", "fasta", "iplay", "elf bar", "funky", "elux", "snoopy"];
+    const categorias = ["todos", "vhill", "waka", "lost mary", "fasta", "iplay", "elf", "funky", "elux", "snoopy"];
 
     const modFiltrados = catSelected === "todos"
         ? modelos

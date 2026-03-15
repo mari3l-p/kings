@@ -18,7 +18,7 @@ export default function Navbar() {
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 
     return(
-        <nav className='flex justify-between px-6 md:px-12 pt-15 pb-5 border-b border-b-(--pink-50) sticky top-0 bg-black z-50'>
+        <nav className='flex justify-between px-6 md:px-12 pt-8 pb-5 border-b border-b-(--pink-50) sticky top-0 bg-black z-50'>
 
             <Link href={"/"} className='flex items-center gap-3'>
                 <div>
