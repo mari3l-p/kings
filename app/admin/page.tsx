@@ -1,12 +1,13 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { Tag, Package, BarChart3, LogOut, Menu, X } from "lucide-react"
+import { Tag, Package, BarChart3, LogOut, Menu, X, Megaphone } from "lucide-react"
 import CrearPromocion from "./promos/page"
 import { supabase } from "../lib/supabase"
 import { useRouter } from "next/navigation"
 import GestionOrdenes from "../components/GestionOrdenes"
 import DailyPromos from "../components/PromosDiarias"
+import GestionAnuncios from "../components/GestionAnuncios"
 
 const AdminPage = () => {
     const [tab, setTab] = useState("stats")
@@ -80,7 +81,8 @@ const AdminPage = () => {
                                 { id: "stats", label: "Estadísticas", icon: BarChart3 },
                                 { id: "promos", label: "Promociones", icon: Tag },
                                 { id: "dailyPromos", label: "Promociones Diarias", icon: Tag },
-                                { id: "productos", label: "Inventario", icon: Package }
+                                { id: "productos", label: "Inventario", icon: Package },
+                                { id: "anuncios", label: "Anuncios", icon: Megaphone }
                             ].map((item) => (
                                 <button
                                     key={item.id}
@@ -152,6 +154,7 @@ const AdminPage = () => {
                         {tab === "promos" && <CrearPromocion />}
                         {tab === "productos" && <GestionOrdenes />}
                         {tab === "dailyPromos" && <DailyPromos/>}
+                        {tab == "anuncios" && <GestionAnuncios/>}
                     </div>
                 </div>
             </main>
