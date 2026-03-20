@@ -123,6 +123,9 @@ const AdminPage = () => {
                     <button onClick={() => setTab("productos")} className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all ${tab === "productos" ? "bg-(--pink-75)" : "text-gray-400 hover:bg-white/5"}`}>
                         <Package size={22} /> <span className="text-sm font-bold uppercase tracking-widest">Inventario</span>
                     </button>
+                    <button onClick={() => setTab("anuncios")} className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all ${tab === "anuncios" ? "bg-(--pink-75)" : "text-gray-400 hover:bg-white/5"}`}>
+                        <Megaphone size={22} /> <span className="text-sm font-bold uppercase tracking-widest">Anuncios</span>
+                    </button>
                 </nav>
                 <button onClick={handleLogout} className="flex items-center gap-4 px-4 py-4 text-red-500/60 hover:text-red-500 border-t border-white/5 mt-auto pt-6">
                     <LogOut size={22} /> <span className="text-sm font-bold uppercase tracking-widest">Cerrar Sesión</span>
@@ -136,6 +139,7 @@ const AdminPage = () => {
                             {tab === "stats" && "Resumen General"}
                             {tab === "promos" && "Promociones"}
                             {tab === "productos" && "Inventario de Vapes"}
+                            {tab === "anuncios" && "Anuncios"}
                         </h2>
                         <div className="h-1 w-20 bg-(--pink-75) mt-2" />
                     </header>
