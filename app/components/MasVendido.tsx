@@ -52,10 +52,11 @@ const CategoriasRandom = () => {
                             <div className="group relative h-100 overflow-hidden rounded-3xl border border-white/10">
                                 {/* Imagen de fondo */}
                                 
-                                    <Image 
+                                    <Image
                                         src={cat.imagen} 
                                         alt={cat.nombre}
                                         fill
+                                        unoptimized
                                         className="object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100"
                                     />
                                 

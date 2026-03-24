@@ -151,7 +151,7 @@ export default function page() {
                     return (
                         <div key={mod.id} className="border-2 border-(--purple) rounded-2xl w-xs bg-black">
                             <div className="relative">
-                                <Image
+                                <img
                                     src={mod.imagen}
                                     alt={mod.nombre}
                                     className="object-cover rounded-t-3xl"
