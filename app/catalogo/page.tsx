@@ -2,7 +2,6 @@
 import { calcularPrecioFinal, PromoType, DailyPromoType } from "../lib/utils";
 import { useEffect, useState } from "react"
 import { supabase } from "../lib/supabase"
-import Image from "next/image"
 import { Check, Plus, Tag, Zap } from "lucide-react";
 import Masonry from "react-masonry-css";
 import { useCart } from "../context/CartContext";
@@ -54,7 +53,6 @@ export default function page() {
         const ahora = new Date().toISOString()
         const hoy = DIAS[new Date().getDay()]
 
-        // Fetch modelos
         const { data: modelosData, error: modelosError } = await supabase
             .from("modelos")
             .select("id, nombre, imagen, precio, productos (id, sabor, stock)")
@@ -63,7 +61,6 @@ export default function page() {
             setModelos(modelosData.sort((a, b) => a.precio - b.precio))
         }
 
-        // Fetch regular promos
         const { data: promosData, error: promoError } = await supabase
             .from("promos")
             .select("*")
@@ -73,7 +70,6 @@ export default function page() {
         if (promoError) console.error(promoError)
         if (promosData) setPromos(promosData)
 
-        // ✅ Fetch today's daily promos
         const { data: dailyData, error: dailyError } = await supabase
             .from("daily_promos")
             .select("*")
@@ -84,11 +80,12 @@ export default function page() {
 
     useEffect(() => { fetchData() }, [])
 
-    const categorias = ["todos", "vhill", "waka", "lost mary", "fasta", "iplay", "elf", "funky", "elux", "snoopy"];
+    const categorias = ["todos", "vhill", "waka", "lost mary", "fasta", "iplay"];
 
-    const modFiltrados = catSelected === "todos"
+    const modFiltrados = (catSelected === "todos"
         ? modelos
         : modelos?.filter(mod => mod.nombre.toLocaleLowerCase().includes(catSelected.toLowerCase()))
+    )?.filter(mod => mod.productos.some(p => p.stock > 0))
 
     const handleAddToCart = (prod: ProductoType, mod: CategoriasType) => {
         addToCart({
@@ -146,7 +143,6 @@ export default function page() {
                         dailyPromos
                     )
                     const tienePromo = promoInfo !== null
-                    const todoAgotado = mod.productos.every(p => p.stock === 0)
 
                     return (
                         <div key={mod.id} className="border-2 border-(--purple) rounded-2xl w-xs bg-black">
@@ -159,7 +155,6 @@ export default function page() {
                                     height={320}
                                 />
 
-                                {/*Badge: daily promo gets a distinct style with a lightning bolt */}
                                 {tienePromo && promoInfo && (
                                     <div className={`absolute top-3 left-3 flex items-center gap-1 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg
                                         ${esDiaria ? "bg-blue-500 text-black" : "bg-(--pink-75)"}`}
@@ -169,7 +164,6 @@ export default function page() {
                                     </div>
                                 )}
 
-                                {/* Bottom-center price badge */}
                                 <div className="text-lg absolute bottom-2 left-1/2 -translate-x-1/2 flex flex-col w-fit text-center">
                                     <div className="py-1 px-3 bg-white text-black text-base font-medium whitespace-nowrap">
                                         {mod.nombre.toUpperCase()}
@@ -190,40 +184,34 @@ export default function page() {
                             </div>
 
                             <div className="my-12 mx-4 flex flex-col">
-                                {todoAgotado ? (
-                                    <p className="text-center text-red-500 text-xs font-semibold tracking-widest py-2">
-                                        AGOTADO
-                                    </p>
-                                ) : (
-                                    mod.productos.map(prod => (
-                                        <div key={prod.id}>
-                                            <div className={`flex justify-between  px-4 py-1 my-1 fondo-dark rounded-sm text-sm
-                                                ${prod.stock === 0 ? "opacity-50" : ""}`}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    {prod.sabor.toUpperCase()}
-                                                    {prod.stock === 0 && (
-                                                        <span className="text-red-500 text-[10px] font-bold tracking-wider">
-                                                            AGOTADO
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                {prod.stock > 0 && (
-                                                    <button
-                                                        className="cursor-pointer hover:bg-(--pink-75) rounded-md"
-                                                        onClick={() => handleAddToCart(prod, mod)}
-                                                    >
-                                                        {addedId === prod.id
-                                                            ? <Check size={22} className="animate-in zoom-in" />
-                                                            : <Plus size={22} />
-                                                        }
-                                                    </button>
+                                {mod.productos.map(prod => (
+                                    <div key={prod.id}>
+                                        <div className={`flex justify-between px-4 py-1 my-1 fondo-dark rounded-sm text-sm
+                                            ${prod.stock === 0 ? "opacity-50" : ""}`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                {prod.sabor.toUpperCase()}
+                                                {prod.stock === 0 && (
+                                                    <span className="text-red-500 text-[10px] font-bold tracking-wider">
+                                                        AGOTADO
+                                                    </span>
                                                 )}
                                             </div>
-                                            <hr className="text-(--pink-15) my-2" />
+                                            {prod.stock > 0 && (
+                                                <button
+                                                    className="cursor-pointer hover:bg-(--pink-75) rounded-md"
+                                                    onClick={() => handleAddToCart(prod, mod)}
+                                                >
+                                                    {addedId === prod.id
+                                                        ? <Check size={22} className="animate-in zoom-in" />
+                                                        : <Plus size={22} />
+                                                    }
+                                                </button>
+                                            )}
                                         </div>
-                                    ))
-                                )}
+                                        <hr className="text-(--pink-15) my-2" />
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )
