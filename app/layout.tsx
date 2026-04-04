@@ -4,6 +4,7 @@ import Navbar from './components/Navbar'
 import { CartProvider } from './context/CartContext'
 import Footer from './components/Footer'
 import { Metadata, Viewport } from 'next'
+import PromoPopup from './components/PromoPopUp'
 
 const montserrat = Montserrat({
   subsets: ['latin'],
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${montserrat.variable} font-sans antialiased`}>
         <CartProvider>
           <Navbar />
+          <PromoPopup/>
           {children}
           <Footer />
         </CartProvider>

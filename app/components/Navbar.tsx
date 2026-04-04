@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import Carrito from '../carrito/page';
 import { useCart } from '../context/CartContext';
+import { AnuncioTop } from './AnuncioTop';
 
 export default function Navbar() {
 
@@ -18,7 +19,10 @@ export default function Navbar() {
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 
     return(
-        <nav className='flex justify-between px-6 md:px-12 pt-8 pb-5 border-b border-b-(--pink-50) sticky top-0 bg-black z-50'>
+        <div className='px-6 md:px-12 pt-8 pb-5 border-b border-b-(--pink-50) sticky top-0 bg-black z-50'>
+            <AnuncioTop/>
+
+            <nav className='flex justify-between' >
 
             <Link href={"/"} className='flex items-center gap-3'>
                 <div>
@@ -50,5 +54,7 @@ export default function Navbar() {
 
             <Carrito isOpen={isCartOpen} setIsOpen={setIsCartOpen} />
         </nav>
+        </div>
+        
     )
 }

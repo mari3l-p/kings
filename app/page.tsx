@@ -43,6 +43,7 @@ export default function Home() {
       <PromoImg/>
     </div>
     <MasVendidos/>
+    <img src="18.png" alt="recomienda y gana" className="w-full md:w-[60%] lg:w-[40%] overflow-hidden mx-auto rounded-2xl p-6" />
     </>
   );
 }
