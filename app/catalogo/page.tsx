@@ -32,11 +32,36 @@ const DIAS: Record<number, string> = {
   4: "jueves", 5: "viernes", 6: "sábado"
 };
 
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
 function getPromoBadgeText(promoInfo: PromoType | DailyPromoType): string {
   if (promoInfo.desc_tipo === "porcentaje") return `${promoInfo.desc_valor}% OFF`;
   if (promoInfo.desc_tipo === "fijo") return `-$${promoInfo.desc_valor}`;
   if (promoInfo.desc_tipo === "pack" && promoInfo.cantidad_pack) return `${promoInfo.cantidad_pack} x $${promoInfo.desc_valor}`;
   return "PROMO";
+}
+
+function getCache<T>(key: string): T | null {
+  try {
+    const raw = sessionStorage.getItem(key)
+    if (!raw) return null
+    const { data, timestamp } = JSON.parse(raw)
+    if (Date.now() - timestamp > CACHE_DURATION) {
+      sessionStorage.removeItem(key)
+      return null
+    }
+    return data as T
+  } catch {
+    return null
+  }
+}
+
+function setCache(key: string, data: unknown) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }))
+  } catch {
+    // sessionStorage puede fallar en modo privado, ignorar
+  }
 }
 
 export default function page() {
@@ -46,6 +71,7 @@ export default function page() {
     const [addedId, setAddedId] = useState<number | null>(null);
     const [promos, setPromos] = useState<PromoType[] | null>(null)
     const [dailyPromos, setDailyPromos] = useState<DailyPromoType[] | null>(null)
+    const [loading, setLoading] = useState(true)
 
     const { addToCart } = useCart()
 
@@ -53,29 +79,57 @@ export default function page() {
         const ahora = new Date().toISOString()
         const hoy = DIAS[new Date().getDay()]
 
-        const { data: modelosData, error: modelosError } = await supabase
-            .from("modelos")
-            .select("id, nombre, imagen, precio, productos (id, sabor, stock)")
-        if (modelosError) console.error(modelosError)
-        if (modelosData) {
-            setModelos(modelosData.sort((a, b) => a.precio - b.precio))
+        // --- Modelos ---
+        const cachedModelos = getCache<CategoriasType[]>("modelos")
+        if (cachedModelos) {
+            setModelos(cachedModelos)
+        } else {
+            const { data: modelosData, error: modelosError } = await supabase
+                .from("modelos")
+                .select("id, nombre, imagen, precio, productos (id, sabor, stock)")
+            if (modelosError) console.error(modelosError)
+            if (modelosData) {
+                const sorted = modelosData.sort((a, b) => a.precio - b.precio)
+                setModelos(sorted)
+                setCache("modelos", sorted)
+            }
         }
 
-        const { data: promosData, error: promoError } = await supabase
-            .from("promos")
-            .select("*")
-            .eq("activo", true)
-            .lte("comienza", ahora)
-            .gte("termina", ahora)
-        if (promoError) console.error(promoError)
-        if (promosData) setPromos(promosData)
+        // --- Promos ---
+        const cachedPromos = getCache<PromoType[]>("promos")
+        if (cachedPromos) {
+            setPromos(cachedPromos)
+        } else {
+            const { data: promosData, error: promoError } = await supabase
+                .from("promos")
+                .select("id, categoria, desc_tipo, desc_valor, cantidad_pack, comienza, termina, activo")
+                .eq("activo", true)
+                .lte("comienza", ahora)
+                .gte("termina", ahora)
+            if (promoError) console.error(promoError)
+            if (promosData) {
+                setPromos(promosData)
+                setCache("promos", promosData)
+            }
+        }
 
-        const { data: dailyData, error: dailyError } = await supabase
-            .from("daily_promos")
-            .select("*")
-            .eq("dia_semana", hoy)
-        if (dailyError) console.error(dailyError)
-        if (dailyData) setDailyPromos(dailyData)
+        // --- Daily promos ---
+        const cachedDaily = getCache<DailyPromoType[]>(`daily_${hoy}`)
+        if (cachedDaily) {
+            setDailyPromos(cachedDaily)
+        } else {
+            const { data: dailyData, error: dailyError } = await supabase
+                .from("daily_promos")
+                .select("id, dia_semana, desc_tipo, desc_valor, cantidad_pack, nombre, modelo_id")
+                .eq("dia_semana", hoy)
+            if (dailyError) console.error(dailyError)
+            if (dailyData) {
+                setDailyPromos(dailyData)
+                setCache(`daily_${hoy}`, dailyData)
+            }
+        }
+
+        setLoading(false)
     }
 
     useEffect(() => { fetchData() }, [])
@@ -129,94 +183,102 @@ export default function page() {
                 </div>
             </div>
 
-            <Masonry
-                breakpointCols={breakpointColumnsObj}
-                className="flex w-full gap-10 md:gap-2"
-                columnClassName="flex flex-col gap-10 md:gap-2 items-center"
-            >
-                {modFiltrados?.map(mod => {
-                    const { precioFinal, esPack, promoInfo, esDiaria } = calcularPrecioFinal(
-                        mod.precio,
-                        mod.id,
-                        mod.nombre,
-                        promos,
-                        dailyPromos
-                    )
-                    const tienePromo = promoInfo !== null
+            {loading ? (
+                <div className="flex justify-center items-center py-32">
+                    <div className="w-8 h-8 border-4 border-(--purple) border-t-transparent rounded-full animate-spin" />
+                </div>
+            ) : (
+                <Masonry
+                    breakpointCols={breakpointColumnsObj}
+                    className="flex w-full gap-10 md:gap-2"
+                    columnClassName="flex flex-col gap-10 md:gap-2 items-center"
+                >
+                    {modFiltrados?.map(mod => {
+                        const { precioFinal, esPack, promoInfo, esDiaria } = calcularPrecioFinal(
+                            mod.precio,
+                            mod.id,
+                            mod.nombre,
+                            promos,
+                            dailyPromos
+                        )
+                        const tienePromo = promoInfo !== null
 
-                    return (
-                        <div key={mod.id} className="border-2 border-(--purple) rounded-2xl w-xs bg-black">
-                            <div className="relative">
-                                <img
-                                    src={mod.imagen}
-                                    alt={mod.nombre}
-                                    className="object-cover rounded-t-3xl"
-                                    width={320}
-                                    height={320}
-                                />
+                        return (
+                            <div key={mod.id} className="border-2 border-(--purple) rounded-2xl w-xs bg-black">
+                                <div className="relative">
+                                    <img
+                                        src={mod.imagen}
+                                        alt={mod.nombre}
+                                        loading="lazy"
+                                        decoding="async"
+                                        className="object-cover rounded-t-3xl w-full"
+                                        width={320}
+                                        height={320}
+                                    />
 
-                                {tienePromo && promoInfo && (
-                                    <div className={`absolute top-3 left-3 flex items-center gap-1 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg
-                                        ${esDiaria ? "bg-blue-500 text-black" : "bg-(--pink-75)"}`}
-                                    >
-                                        {esDiaria ? <Zap size={11} /> : <Tag size={11} />}
-                                        {esDiaria ? "Promo del Día " : ""}{getPromoBadgeText(promoInfo)}
-                                    </div>
-                                )}
-
-                                <div className="text-lg absolute bottom-2 left-1/2 -translate-x-1/2 flex flex-col w-fit text-center">
-                                    <div className="py-1 px-3 bg-white text-black text-base font-medium whitespace-nowrap">
-                                        {mod.nombre.toUpperCase()}
-                                    </div>
-                                    {tienePromo ? (
-                                        <div className="py-1 px-3 my-2 bg-(--background) text-white font-medium whitespace-nowrap">
-                                            {esPack && promoInfo
-                                                ? `${promoInfo.cantidad_pack} x $${promoInfo.desc_valor}`
-                                                : `$${precioFinal}`
-                                            }
-                                        </div>
-                                    ) : (
-                                        <div className="py-1 px-3 my-2 bg-(--background) font-medium">
-                                            ${mod.precio}
+                                    {tienePromo && promoInfo && (
+                                        <div className={`absolute top-3 left-3 flex items-center gap-1 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg
+                                            ${esDiaria ? "bg-blue-500 text-black" : "bg-(--pink-75)"}`}
+                                        >
+                                            {esDiaria ? <Zap size={11} /> : <Tag size={11} />}
+                                            {esDiaria ? "Promo del Día " : ""}{getPromoBadgeText(promoInfo)}
                                         </div>
                                     )}
-                                </div>
-                            </div>
 
-                            <div className="my-12 mx-4 flex flex-col">
-                                {mod.productos.map(prod => (
-                                    <div key={prod.id}>
-                                        <div className={`flex justify-between px-4 py-1 my-1 fondo-dark rounded-sm text-sm
-                                            ${prod.stock === 0 ? "opacity-50" : ""}`}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                {prod.sabor.toUpperCase()}
-                                                {prod.stock === 0 && (
-                                                    <span className="text-red-500 text-[10px] font-bold tracking-wider">
-                                                        AGOTADO
-                                                    </span>
+                                    <div className="text-lg absolute bottom-2 left-1/2 -translate-x-1/2 flex flex-col w-fit text-center">
+                                        <div className="py-1 px-3 bg-white text-black text-base font-medium whitespace-nowrap">
+                                            {mod.nombre.toUpperCase()}
+                                        </div>
+                                        {tienePromo ? (
+                                            <div className="py-1 px-3 my-2 bg-(--background) text-white font-medium whitespace-nowrap">
+                                                {esPack && promoInfo
+                                                    ? `${promoInfo.cantidad_pack} x $${promoInfo.desc_valor}`
+                                                    : `$${precioFinal}`
+                                                }
+                                            </div>
+                                        ) : (
+                                            <div className="py-1 px-3 my-2 bg-(--background) font-medium">
+                                                ${mod.precio}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="my-12 mx-4 flex flex-col">
+                                    {mod.productos.map(prod => (
+                                        <div key={prod.id}>
+                                            <div className={`flex justify-between px-4 py-1 my-1 fondo-dark rounded-sm text-sm
+                                                ${prod.stock === 0 ? "opacity-50" : ""}`}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    {prod.sabor.toUpperCase()}
+                                                    {prod.stock === 0 && (
+                                                        <span className="text-red-500 text-[10px] font-bold tracking-wider">
+                                                            AGOTADO
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {prod.stock > 0 && (
+                                                    <button
+                                                        className="cursor-pointer hover:bg-(--pink-75) rounded-md"
+                                                        onClick={() => handleAddToCart(prod, mod)}
+                                                    >
+                                                        {addedId === prod.id
+                                                            ? <Check size={22} className="animate-in zoom-in" />
+                                                            : <Plus size={22} />
+                                                        }
+                                                    </button>
                                                 )}
                                             </div>
-                                            {prod.stock > 0 && (
-                                                <button
-                                                    className="cursor-pointer hover:bg-(--pink-75) rounded-md"
-                                                    onClick={() => handleAddToCart(prod, mod)}
-                                                >
-                                                    {addedId === prod.id
-                                                        ? <Check size={22} className="animate-in zoom-in" />
-                                                        : <Plus size={22} />
-                                                    }
-                                                </button>
-                                            )}
+                                            <hr className="text-(--pink-15) my-2" />
                                         </div>
-                                        <hr className="text-(--pink-15) my-2" />
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    )
-                })}
-            </Masonry>
+                        )
+                    })}
+                </Masonry>
+            )}
         </div>
     )
 }
