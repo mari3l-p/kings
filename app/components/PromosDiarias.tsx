@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { supabase } from "@/app/lib/supabase"
 import { Upload, Type, Percent, Clock, Hash, Tag, X } from "lucide-react"
+import { uploadImage } from "@/app/lib/uploadImage"
 
 export default function DailyPromos() {
     const [modelos, setModelos] = useState<any[]>([])
@@ -14,7 +15,6 @@ export default function DailyPromos() {
         desc_valor: "",
         cantidad_pack: "1",
     })
-    // ✅ Array of selected modelo ids instead of a single value
     const [modelosSeleccionados, setModelosSeleccionados] = useState<number[]>([])
     const [imagen, setImagen] = useState<File | null>(null)
 
@@ -38,16 +38,14 @@ export default function DailyPromos() {
         setLoading(true)
 
         try {
+            // ✅ Sube a Cloudinary en vez de Supabase Storage
             let imagenUrl = ""
             if (imagen) {
-                const nombreArchivo = `daily-${Date.now()}-${imagen.name}`
-                await supabase.storage.from("daily_promos").upload(nombreArchivo, imagen)
-                const { data: urlData } = supabase.storage.from("daily_promos").getPublicUrl(nombreArchivo)
-                imagenUrl = urlData.publicUrl
+                const url = await uploadImage(imagen, 'daily_promos')
+                if (!url) throw new Error("Error subiendo imagen a Cloudinary")
+                imagenUrl = url
             }
 
-            // ✅ If no models selected = applies to all (insert one row with modelo_id null)
-            // If models selected = insert one row per modelo
             const modeloIds = modelosSeleccionados.length === 0
                 ? [null]
                 : modelosSeleccionados
@@ -66,7 +64,7 @@ export default function DailyPromos() {
             if (error) throw error
 
             alert(`✅ Promo guardada para ${modeloIds.length === 1 && modeloIds[0] === null ? "todos los modelos" : `${modeloIds.length} modelos`}`)
-            
+
             // Reset form
             setModelosSeleccionados([])
             setImagen(null)
@@ -159,11 +157,10 @@ export default function DailyPromos() {
                 </div>
             </div>
 
-            {/* ✅ Multi-select modelos */}
+            {/* Multi-select modelos */}
             <div>
                 <label className={labelStyle}><Tag size={14}/> Modelos (deja vacío para aplicar a todos)</label>
 
-                {/* Selected chips */}
                 {modelosSeleccionados.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-3">
                         {modelosSeleccionados.map(id => {
@@ -180,7 +177,6 @@ export default function DailyPromos() {
                     </div>
                 )}
 
-                {/* Modelo grid */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
                     {modelos.map(mod => {
                         const selected = modelosSeleccionados.includes(mod.id)
@@ -212,6 +208,7 @@ export default function DailyPromos() {
             <div className="border-2 border-dashed border-white/10 rounded-2xl p-6 text-center hover:border-(--pink-75)/40 transition-colors relative">
                 <input
                     type="file"
+                    accept="image/*"
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     onChange={(e) => setImagen(e.target.files?.[0] || null)}
                 />
@@ -231,7 +228,7 @@ export default function DailyPromos() {
                 disabled={loading}
                 className="w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-(--pink-75) hover:text-white transition-all transform active:scale-95"
             >
-                {loading ? "Guardando..." : `Guardar Promo${modelosSeleccionados.length > 1 ? ` (${modelosSeleccionados.length} modelos)` : ""}`}
+                {loading ? "Subiendo a Cloudinary..." : `Guardar Promo${modelosSeleccionados.length > 1 ? ` (${modelosSeleccionados.length} modelos)` : ""}`}
             </button>
         </form>
     )

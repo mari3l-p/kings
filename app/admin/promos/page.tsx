@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { supabase } from "@/app/lib/supabase"
 import { Upload, Calendar, Tag, Type, Percent } from "lucide-react"
+import { uploadImage } from "@/app/lib/uploadImage"
 
 interface modelosType {
     nombre: string,
@@ -15,9 +16,9 @@ export default function CrearPromocion() {
     const [form, setForm] = useState({
         nombre: "",
         categoria: "",
-        desc_tipo: "porcentaje", // Ahora aceptará "porcentaje", "fijo", o "pack"
-        desc_valor: "",         // Precio total (ej: 400)
-        cantidad_pack: "1",     // Cantidad de vapes (ej: 2)
+        desc_tipo: "porcentaje",
+        desc_valor: "",
+        cantidad_pack: "1",
         comienza: "",
         termina: ""
     })
@@ -38,9 +39,15 @@ export default function CrearPromocion() {
         setLoading(true)
 
         try {
-            const fechaInicio = new Date(form.comienza).toISOString();
-            const fechaFin = new Date(form.termina).toISOString();
-            const imagenUrl = await subirImagen()
+            const fechaInicio = new Date(form.comienza).toISOString()
+            const fechaFin = new Date(form.termina).toISOString()
+
+            // ✅ Sube a Cloudinary en vez de Supabase Storage
+            let imagenUrl: string | null = null
+            if (imagen) {
+                imagenUrl = await uploadImage(imagen, 'promos')
+                if (!imagenUrl) throw new Error("Error subiendo imagen a Cloudinary")
+            }
 
             const { error } = await supabase
                 .from("promos")
@@ -49,7 +56,7 @@ export default function CrearPromocion() {
                     categoria: form.categoria,
                     desc_tipo: form.desc_tipo,
                     desc_valor: form.desc_valor,
-                    cantidad_pack: form.desc_tipo === "pack" ? parseInt(form.cantidad_pack) : 1, // <--- Nuevo
+                    cantidad_pack: form.desc_tipo === "pack" ? parseInt(form.cantidad_pack) : 1,
                     comienza: fechaInicio,
                     termina: fechaFin,
                     activo: true,
@@ -57,8 +64,21 @@ export default function CrearPromocion() {
                 }])
 
             if (error) throw error
+
             alert("✨ Promoción creada con éxito")
-            // Opcional: limpiar form aquí
+
+            // Limpiar form
+            setForm({
+                nombre: "",
+                categoria: "",
+                desc_tipo: "porcentaje",
+                desc_valor: "",
+                cantidad_pack: "1",
+                comienza: "",
+                termina: ""
+            })
+            setImagen(null)
+
         } catch (error) {
             console.log(error)
             alert("Error creando promoción")
@@ -67,29 +87,13 @@ export default function CrearPromocion() {
         }
     }
 
-    async function subirImagen() {
-        if (!imagen) {
-            alert("Selecciona una imagen primero");
-            return null;
-        }
-        const nombreArchivo = `${Date.now()}-${imagen.name}`;
-        const { data, error } = await supabase.storage.from("promos").upload(nombreArchivo, imagen);
-        if (error) {
-            console.error("Error subiendo:", error);
-            return null;
-        }
-        const { data: urlData } = supabase.storage.from("promos").getPublicUrl(nombreArchivo);
-        return urlData.publicUrl;
-    }
-
-    // Estilo común para los inputs
     const inputStyle = "w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-(--pink-75) transition-all placeholder:text-gray-600 text-sm"
     const labelStyle = "flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-400 mb-2"
 
     return (
         <form onSubmit={crearPromocion} className="max-w-4xl mx-auto space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
+
                 {/* Nombre de la Promo */}
                 <div className="col-span-1 md:col-span-2">
                     <label className={labelStyle}><Type size={14}/> Nombre de la Promoción</label>
@@ -118,48 +122,48 @@ export default function CrearPromocion() {
                     </select>
                 </div>
 
-                    {/* Tipo de Descuento y Valor */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Tipo de Descuento y Valor */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label className={labelStyle}><Percent size={14}/> Tipo de Promo</label>
+                        <select
+                            className={inputStyle}
+                            value={form.desc_tipo}
+                            onChange={(e) => setForm({ ...form, desc_tipo: e.target.value })}
+                        >
+                            <option value="porcentaje">Porcentaje %</option>
+                            <option value="fijo">Descuento Fijo $</option>
+                            <option value="pack">Pack / Combo</option>
+                        </select>
+                    </div>
+
+                    {form.desc_tipo === "pack" && (
                         <div>
-                            <label className={labelStyle}><Percent size={14}/> Tipo de Promo</label>
-                            <select
+                            <label className={labelStyle}>Cant. de Vapes</label>
+                            <input
+                                type="number"
                                 className={inputStyle}
-                                value={form.desc_tipo}
-                                onChange={(e) => setForm({ ...form, desc_tipo: e.target.value })}
-                            >
-                                <option value="porcentaje">Porcentaje %</option>
-                                <option value="fijo">Descuento Fijo $</option>
-                                <option value="pack">Pack / Combo</option>
-                            </select>
+                                placeholder="Ej: 2"
+                                value={form.cantidad_pack}
+                                onChange={(e) => setForm({ ...form, cantidad_pack: e.target.value })}
+                            />
                         </div>
+                    )}
 
-                        {form.desc_tipo === "pack" && (
-                            <div>
-                                <label className={labelStyle}>Cant. de Vapes</label>
-                                <input
-                                    type="number"
-                                    className={inputStyle}
-                                    placeholder="Ej: 2"
-                                    value={form.cantidad_pack}
-                                    onChange={(e) => setForm({ ...form, cantidad_pack: e.target.value })}
-                                />
-                            </div>
-                        )}
-
-        <div>
-            <label className={labelStyle}>
-                {form.desc_tipo === "pack" ? "Precio Total del Pack" : "Valor del Descuento"}
-            </label>
-            <input
-                type="number"
-                className={inputStyle}
-                placeholder={form.desc_tipo === "pack" ? "400" : "0"}
-                value={form.desc_valor}
-                onChange={(e) => setForm({ ...form, desc_valor: e.target.value })}
-                required
-            />
-        </div>
-    </div>
+                    <div>
+                        <label className={labelStyle}>
+                            {form.desc_tipo === "pack" ? "Precio Total del Pack" : "Valor del Descuento"}
+                        </label>
+                        <input
+                            type="number"
+                            className={inputStyle}
+                            placeholder={form.desc_tipo === "pack" ? "400" : "0"}
+                            value={form.desc_valor}
+                            onChange={(e) => setForm({ ...form, desc_valor: e.target.value })}
+                            required
+                        />
+                    </div>
+                </div>
 
                 {/* Fechas */}
                 <div>
@@ -167,6 +171,7 @@ export default function CrearPromocion() {
                     <input
                         type="datetime-local"
                         className={inputStyle}
+                        value={form.comienza}
                         onChange={(e) => setForm({ ...form, comienza: e.target.value })}
                         required
                     />
@@ -177,6 +182,7 @@ export default function CrearPromocion() {
                     <input
                         type="datetime-local"
                         className={inputStyle}
+                        value={form.termina}
                         onChange={(e) => setForm({ ...form, termina: e.target.value })}
                         required
                     />
@@ -191,14 +197,17 @@ export default function CrearPromocion() {
                             accept="image/*"
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             onChange={(e) => {
-                                const files = e.target.files;
-                                if (files && files.length > 0) setImagen(files[0]);
+                                const files = e.target.files
+                                if (files && files.length > 0) setImagen(files[0])
                             }}
                         />
                         <div className="space-y-2">
                             <Upload className="mx-auto text-gray-500" size={30} />
                             <p className="text-sm text-gray-400">
-                                {imagen ? <span className="text-(--pink-75) font-bold">{imagen.name}</span> : "Haz clic o arrastra una imagen"}
+                                {imagen
+                                    ? <span className="text-(--pink-75) font-bold">{imagen.name}</span>
+                                    : "Haz clic o arrastra una imagen"
+                                }
                             </p>
                         </div>
                     </div>
@@ -210,7 +219,7 @@ export default function CrearPromocion() {
                 disabled={loading}
                 className="w-full bg-(--pink-75) hover:bg-(--pink-35) text-white font-bold py-4 rounded-xl uppercase tracking-[0.2em] transition-all transform active:scale-95 disabled:opacity-50 mt-8"
             >
-                {loading ? "Procesando..." : "Lanzar Promoción"}
+                {loading ? "Subiendo a Cloudinary..." : "Lanzar Promoción"}
             </button>
         </form>
     )

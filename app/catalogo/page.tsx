@@ -32,7 +32,9 @@ const DIAS: Record<number, string> = {
   4: "jueves", 5: "viernes", 6: "sábado"
 };
 
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+// Modelos y promos regulares: 5 minutos
+// Daily promos: NO se cachean porque cambian cada día y necesitan estar frescos
+const CACHE_DURATION = 5 * 60 * 1000;
 
 function getPromoBadgeText(promoInfo: PromoType | DailyPromoType): string {
   if (promoInfo.desc_tipo === "porcentaje") return `${promoInfo.desc_valor}% OFF`;
@@ -59,9 +61,7 @@ function getCache<T>(key: string): T | null {
 function setCache(key: string, data: unknown) {
   try {
     sessionStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }))
-  } catch {
-    // sessionStorage puede fallar en modo privado, ignorar
-  }
+  } catch {}
 }
 
 export default function page() {
@@ -79,7 +79,7 @@ export default function page() {
         const ahora = new Date().toISOString()
         const hoy = DIAS[new Date().getDay()]
 
-        // --- Modelos ---
+        // --- Modelos (con cache) ---
         const cachedModelos = getCache<CategoriasType[]>("modelos")
         if (cachedModelos) {
             setModelos(cachedModelos)
@@ -95,7 +95,7 @@ export default function page() {
             }
         }
 
-        // --- Promos ---
+        // --- Promos regulares (con cache) ---
         const cachedPromos = getCache<PromoType[]>("promos")
         if (cachedPromos) {
             setPromos(cachedPromos)
@@ -113,20 +113,16 @@ export default function page() {
             }
         }
 
-        // --- Daily promos ---
-        const cachedDaily = getCache<DailyPromoType[]>(`daily_${hoy}`)
-        if (cachedDaily) {
-            setDailyPromos(cachedDaily)
-        } else {
-            const { data: dailyData, error: dailyError } = await supabase
-                .from("daily_promos")
-                .select("id, dia_semana, desc_tipo, desc_valor, cantidad_pack, nombre, modelo_id")
-                .eq("dia_semana", hoy)
-            if (dailyError) console.error(dailyError)
-            if (dailyData) {
-                setDailyPromos(dailyData)
-                setCache(`daily_${hoy}`, dailyData)
-            }
+        // --- Daily promos (SIN cache — siempre frescos) ---
+        // No cacheamos porque si el admin crea una promo nueva no aparecería hasta que expire el cache
+        const { data: dailyData, error: dailyError } = await supabase
+            .from("daily_promos")
+            .select("id, dia_semana, desc_tipo, desc_valor, cantidad_pack, nombre, modelo_id")
+            .eq("dia_semana", hoy)
+        if (dailyError) console.error(dailyError)
+        if (dailyData) {
+            console.log("Daily promos de hoy:", dailyData) // ← podés sacar esto después
+            setDailyPromos(dailyData)
         }
 
         setLoading(false)
