@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.8",
-    "@supabase/supabase-js": "^2.99.1",
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.105.1",
     "@types/google.maps": "^3.58.1",
     "cloudinary": "^2.9.0",
     "lucide-react": "^0.564.0",
