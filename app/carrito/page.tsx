@@ -3,7 +3,6 @@
 import { useCart } from "../context/CartContext";
 import { ChevronLeft, MessageCircle, Minus, Plus, ShoppingBag, Trash2, X, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import MapSelector from "../components/UbicacionExacta";
 import MsgSend from "../components/MsgSend";
 import { supabase } from "../lib/supabase";
@@ -247,15 +246,13 @@ Pago: ${formData.pago.join(", ")}
 
                 return (
                   <div key={item.id} className="p-3 bg-white/5 rounded-2xl border border-white/10 flex gap-3">
-                    
-                    {/* ✅ Model image */}
+
+                    {/* ✅ img en vez de Image — evita bloqueo de dominios externos */}
                     {item.imgMod && (
                       <div className="shrink-0">
-                        <Image
+                        <img
                           src={item.imgMod}
                           alt={item.modelo}
-                          width={72}
-                          height={72}
                           className="rounded-xl object-cover w-18 h-18"
                         />
                       </div>
