@@ -114,14 +114,12 @@ export default function page() {
         }
 
         // --- Daily promos (SIN cache — siempre frescos) ---
-        // No cacheamos porque si el admin crea una promo nueva no aparecería hasta que expire el cache
         const { data: dailyData, error: dailyError } = await supabase
             .from("daily_promos")
             .select("id, dia_semana, desc_tipo, desc_valor, cantidad_pack, nombre, modelo_id")
             .eq("dia_semana", hoy)
         if (dailyError) console.error(dailyError)
         if (dailyData) {
-            console.log("Daily promos de hoy:", dailyData) // ← podés sacar esto después
             setDailyPromos(dailyData)
         }
 
@@ -132,10 +130,9 @@ export default function page() {
 
     const categorias = ["todos", "vhill", "waka", "extre", "fasta", "elux", "iplay"];
 
-    const modFiltrados = (catSelected === "todos"
+    const modFiltrados = catSelected === "todos"
         ? modelos
-        : modelos?.filter(mod => mod.nombre.toLocaleLowerCase().includes(catSelected.toLowerCase()))
-    )?.filter(mod => mod.productos.some(p => p.stock > 0))
+        : modelos?.filter(mod => mod.nombre.toLocaleLowerCase().includes(catSelected.toLowerCase()));
 
     const handleAddToCart = (prod: ProductoType, mod: CategoriasType) => {
         addToCart({
@@ -198,6 +195,9 @@ export default function page() {
                             dailyPromos
                         )
                         const tienePromo = promoInfo !== null
+                        
+                        // Evalúa si todos los productos de este modelo tienen stock en cero
+                        const todosAgotados = mod.productos.every(prod => prod.stock === 0);
 
                         return (
                             <div key={mod.id} className="border-2 border-(--purple) rounded-2xl w-xs bg-black">
@@ -207,7 +207,7 @@ export default function page() {
                                         alt={mod.nombre}
                                         loading="lazy"
                                         decoding="async"
-                                        className="object-cover rounded-t-3xl w-full"
+                                        className={`object-cover rounded-t-3xl w-full ${todosAgotados ? "opacity-50 grayscale" : ""}`}
                                         width={320}
                                         height={320}
                                     />
@@ -241,34 +241,43 @@ export default function page() {
                                 </div>
 
                                 <div className="my-12 mx-4 flex flex-col">
-                                    {mod.productos.map(prod => (
-                                        <div key={prod.id}>
-                                            <div className={`flex justify-between px-4 py-1 my-1 fondo-dark rounded-sm text-sm
-                                                ${prod.stock === 0 ? "opacity-50" : ""}`}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    {prod.sabor.toUpperCase()}
-                                                    {prod.stock === 0 && (
-                                                        <span className="text-red-500 text-[10px] font-bold tracking-wider">
-                                                            AGOTADO
-                                                        </span>
+                                    {todosAgotados ? (
+                                        <div className="py-8 text-center bg-neutral-950 rounded-md">
+                                            <span className="text-red-500 text-sm font-bold tracking-wider">
+                                                AGOTADO TEMPORALMENTE
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        // Si HAY AL MENOS UN sabor con stock, mostramos la lista normal
+                                        mod.productos.map(prod => (
+                                            <div key={prod.id}>
+                                                <div className={`flex justify-between px-4 py-1 my-1 fondo-dark rounded-sm text-sm
+                                                    ${prod.stock === 0 ? "opacity-50" : ""}`}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        {prod.sabor.toUpperCase()}
+                                                        {prod.stock === 0 && (
+                                                            <span className="text-red-500 text-[10px] font-bold tracking-wider">
+                                                                AGOTADO
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {prod.stock > 0 && (
+                                                        <button
+                                                            className="cursor-pointer hover:bg-(--pink-75) rounded-md"
+                                                            onClick={() => handleAddToCart(prod, mod)}
+                                                        >
+                                                            {addedId === prod.id
+                                                                ? <Check size={22} className="animate-in zoom-in" />
+                                                                : <Plus size={22} />
+                                                            }
+                                                        </button>
                                                     )}
                                                 </div>
-                                                {prod.stock > 0 && (
-                                                    <button
-                                                        className="cursor-pointer hover:bg-(--pink-75) rounded-md"
-                                                        onClick={() => handleAddToCart(prod, mod)}
-                                                    >
-                                                        {addedId === prod.id
-                                                            ? <Check size={22} className="animate-in zoom-in" />
-                                                            : <Plus size={22} />
-                                                        }
-                                                    </button>
-                                                )}
+                                                <hr className="text-(--pink-15) my-2" />
                                             </div>
-                                            <hr className="text-(--pink-15) my-2" />
-                                        </div>
-                                    ))}
+                                        ))
+                                    )}
                                 </div>
                             </div>
                         )
