@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 
-const CODIGO_SECRETO = "202607"
+const CODIGO_SECRETO = "202601"
 
 export default function AccessGate({ children }: { children: React.ReactNode }) {
     const [tieneAcceso, setTieneAcceso] = useState(false)
