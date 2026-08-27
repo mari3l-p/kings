@@ -1,12 +1,12 @@
 "use client"
 
 import { useCart } from "../context/CartContext";
-import { ChevronLeft, MessageCircle, Minus, Plus, ShoppingBag, Trash2, X, Zap } from "lucide-react";
+import { ChevronLeft, MessageCircle, Minus, Plus, ShoppingBag, Tag, Trash2, X, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import MapSelector from "../components/UbicacionExacta";
 import MsgSend from "../components/MsgSend";
 import { supabase } from "../lib/supabase";
-import { calcularPrecioFinal, PromoType, DailyPromoType } from "../lib/utils";
+import { calcularPrecioFinal, calcularPaquetesAplicables, PromoType, DailyPromoType } from "../lib/utils";
 
 interface CarritoProps {
   isOpen: boolean;
@@ -73,7 +73,17 @@ export default function Carrito({ isOpen, setIsOpen }: CarritoProps) {
     return acc;
   }, {} as Record<string, number>);
 
-  const total = cart.reduce((acc, item) => {
+  // ── Paquetes de modelos distintos (aplican sobre el carrito completo) ──
+  const paquetesAplicados = calcularPaquetesAplicables(
+    cart.map((item) => ({ modelo: item.modelo, precio: item.precio, cantidad: item.cantidad })),
+    promos
+  );
+  const ahorroPaquetes = paquetesAplicados.reduce(
+    (acc, p) => acc + (p.precioNormalConsumido - p.precioPaquete),
+    0
+  );
+
+  const totalBase = cart.reduce((acc, item) => {
     const totalCantidadModelo = cantidadPorModelo[item.modelo.toLowerCase()];
     const { precioFinal } = calcularPrecioFinal(
       item.precio, item.modeloId, item.modelo, promos, dailyPromos, totalCantidadModelo
@@ -84,6 +94,8 @@ export default function Carrito({ isOpen, setIsOpen }: CarritoProps) {
     }
     return acc;
   }, 0);
+
+  const total = Math.max(0, totalBase - ahorroPaquetes);
 
   const vapesSelect = cart.reduce((acc, item) => acc + item.cantidad, 0);
 
@@ -118,7 +130,10 @@ export default function Carrito({ isOpen, setIsOpen }: CarritoProps) {
 ${cart.map((item) => `
 *${item.modelo.toUpperCase()}*
   - (${item.cantidad}) ${item.nombre.toUpperCase()}`).join("")}
-
+${paquetesAplicados.length > 0 ? `
+Combos aplicados:
+${paquetesAplicados.map(p => `  - ${p.promo.nombre} x${p.bundlesCount} (ahorro $${Math.round(p.precioNormalConsumido - p.precioPaquete)})`).join("\n")}
+` : ""}
 TOTAL: *$${Math.round(total)}*
 Orden de ${vapesSelect} Vapes
 
@@ -217,104 +232,122 @@ Pago: ${formData.pago.join(", ")}
                 </button>
               </div>
             ) : (
-              cart.map((item: CartItem) => {
-                const totalCantidadModelo = cantidadPorModelo[item.modelo.toLowerCase()];
-                const { esPack, promoInfo, esDiaria } = calcularPrecioFinal(
-                  item.precio, item.modeloId, item.modelo, promos, dailyPromos, totalCantidadModelo
-                );
-                const packActivo = esPack && promoInfo;
-
-                let precioEsteItem: number;
-                let enPack = 0;
-                let sobrante = item.cantidad;
-
-                if (packActivo && promoInfo) {
-                  const info = getItemPackInfo(item, promoInfo, totalCantidadModelo);
-                  enPack = info.enPack;
-                  sobrante = info.sobrante;
-                  const packSize = promoInfo.cantidad_pack ?? 2;
-                  const precioUnitarioPack = promoInfo.desc_valor / packSize;
-                  precioEsteItem = Math.round((enPack * precioUnitarioPack) + (sobrante * item.precio));
-                } else if (promoInfo && !esPack) {
-                  const { precioFinal } = calcularPrecioFinal(
-                    item.precio, item.modeloId, item.modelo, promos, dailyPromos, item.cantidad
-                  );
-                  precioEsteItem = precioFinal;
-                } else {
-                  precioEsteItem = item.precio * item.cantidad;
-                }
-
-                return (
-                  <div key={item.id} className="p-3 bg-white/5 rounded-2xl border border-white/10 flex gap-3">
-
-                    {/* ✅ img en vez de Image — evita bloqueo de dominios externos */}
-                    {item.imgMod && (
-                      <div className="shrink-0">
-                        <img
-                          src={item.imgMod}
-                          alt={item.modelo}
-                          className="rounded-xl object-cover w-18 h-18"
-                        />
+              <>
+                {paquetesAplicados.length > 0 && (
+                  <div className="space-y-2">
+                    {paquetesAplicados.map((p) => (
+                      <div
+                        key={p.promo.id}
+                        className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-2.5 text-sm text-green-400"
+                      >
+                        <Tag size={14} className="shrink-0" />
+                        <span>
+                          Combo <b>{p.promo.nombre}</b> aplicado{p.bundlesCount > 1 ? ` x${p.bundlesCount}` : ""} — ahorras ${Math.round(p.precioNormalConsumido - p.precioPaquete)}
+                        </span>
                       </div>
-                    )}
+                    ))}
+                  </div>
+                )}
 
-                    {/* Content */}
-                    <div className="flex-1 flex flex-col gap-2 min-w-0">
-                      <div className="flex justify-between items-start">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <h4 className="font-bold text-xs uppercase text-(--pink-75) truncate">{item.modelo}</h4>
-                            {esDiaria && (
-                              <span className="flex items-center gap-0.5 text-[9px] font-bold text-yellow-400 shrink-0">
-                                <Zap size={9} /> HOY
-                              </span>
+                {cart.map((item: CartItem) => {
+                  const totalCantidadModelo = cantidadPorModelo[item.modelo.toLowerCase()];
+                  const { esPack, promoInfo, esDiaria } = calcularPrecioFinal(
+                    item.precio, item.modeloId, item.modelo, promos, dailyPromos, totalCantidadModelo
+                  );
+                  const packActivo = esPack && promoInfo;
+
+                  let precioEsteItem: number;
+                  let enPack = 0;
+                  let sobrante = item.cantidad;
+
+                  if (packActivo && promoInfo) {
+                    const info = getItemPackInfo(item, promoInfo, totalCantidadModelo);
+                    enPack = info.enPack;
+                    sobrante = info.sobrante;
+                    const packSize = promoInfo.cantidad_pack ?? 2;
+                    const precioUnitarioPack = promoInfo.desc_valor / packSize;
+                    precioEsteItem = Math.round((enPack * precioUnitarioPack) + (sobrante * item.precio));
+                  } else if (promoInfo && !esPack) {
+                    const { precioFinal } = calcularPrecioFinal(
+                      item.precio, item.modeloId, item.modelo, promos, dailyPromos, item.cantidad
+                    );
+                    precioEsteItem = precioFinal;
+                  } else {
+                    precioEsteItem = item.precio * item.cantidad;
+                  }
+
+                  return (
+                    <div key={item.id} className="p-3 bg-white/5 rounded-2xl border border-white/10 flex gap-3">
+
+                      {/* ✅ img en vez de Image — evita bloqueo de dominios externos */}
+                      {item.imgMod && (
+                        <div className="shrink-0">
+                          <img
+                            src={item.imgMod}
+                            alt={item.modelo}
+                            className="rounded-xl object-cover w-18 h-18"
+                          />
+                        </div>
+                      )}
+
+                      {/* Content */}
+                      <div className="flex-1 flex flex-col gap-2 min-w-0">
+                        <div className="flex justify-between items-start">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 className="font-bold text-xs uppercase text-(--pink-75) truncate">{item.modelo}</h4>
+                              {esDiaria && (
+                                <span className="flex items-center gap-0.5 text-[9px] font-bold text-yellow-400 shrink-0">
+                                  <Zap size={9} /> HOY
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-gray-300 text-sm truncate">{item.nombre}</p>
+                          </div>
+                          <button onClick={() => removeFromCart(item.id)} className="text-gray-500 hover:text-red-500 shrink-0 ml-2">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+
+                        <div className="flex justify-between items-center">
+                          {/* Quantity controls */}
+                          <div className="flex items-center gap-2 bg-black/40 rounded-lg p-1 border border-white/10">
+                            <button onClick={() => restToCart(item)} className="p-0.5 hover:text-(--pink-75)"><Minus size={14} /></button>
+                            <span className="w-4 text-center font-bold text-sm">{item.cantidad}</span>
+                            <button onClick={() => addToCart(item)} className="p-0.5 hover:text-(--pink-75)"><Plus size={14} /></button>
+                          </div>
+
+                          {/* Price */}
+                          <div className="text-right">
+                            {packActivo && enPack > 0 ? (
+                              <div className="flex flex-col items-end">
+                                <span className={`font-black text-lg italic leading-none ${esDiaria ? "text-yellow-400" : "text-(--pink-75)"}`}>
+                                  ${precioEsteItem}
+                                </span>
+                                <span className={`text-[9px] opacity-70 ${esDiaria ? "text-yellow-400" : "text-(--pink-75)"}`}>
+                                  {enPack > 0 && sobrante > 0
+                                    ? `${enPack} en promo + ${sobrante} normal`
+                                    : `${promoInfo!.cantidad_pack} x $${promoInfo!.desc_valor}`}
+                                </span>
+                                <span className="text-gray-500 text-[9px] line-through">${item.precio * item.cantidad}</span>
+                              </div>
+                            ) : promoInfo && !esPack ? (
+                              <div className="flex flex-col items-end">
+                                <span className={`font-black text-lg italic leading-none ${esDiaria ? "text-yellow-400" : "text-(--pink-75)"}`}>
+                                  ${precioEsteItem}
+                                </span>
+                                <span className="text-gray-500 text-[9px] line-through">${item.precio * item.cantidad}</span>
+                              </div>
+                            ) : (
+                              <span className="text-lg font-bold">${precioEsteItem}</span>
                             )}
                           </div>
-                          <p className="text-gray-300 text-sm truncate">{item.nombre}</p>
-                        </div>
-                        <button onClick={() => removeFromCart(item.id)} className="text-gray-500 hover:text-red-500 shrink-0 ml-2">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-
-                      <div className="flex justify-between items-center">
-                        {/* Quantity controls */}
-                        <div className="flex items-center gap-2 bg-black/40 rounded-lg p-1 border border-white/10">
-                          <button onClick={() => restToCart(item)} className="p-0.5 hover:text-(--pink-75)"><Minus size={14} /></button>
-                          <span className="w-4 text-center font-bold text-sm">{item.cantidad}</span>
-                          <button onClick={() => addToCart(item)} className="p-0.5 hover:text-(--pink-75)"><Plus size={14} /></button>
-                        </div>
-
-                        {/* Price */}
-                        <div className="text-right">
-                          {packActivo && enPack > 0 ? (
-                            <div className="flex flex-col items-end">
-                              <span className={`font-black text-lg italic leading-none ${esDiaria ? "text-yellow-400" : "text-(--pink-75)"}`}>
-                                ${precioEsteItem}
-                              </span>
-                              <span className={`text-[9px] opacity-70 ${esDiaria ? "text-yellow-400" : "text-(--pink-75)"}`}>
-                                {enPack > 0 && sobrante > 0
-                                  ? `${enPack} en promo + ${sobrante} normal`
-                                  : `${promoInfo!.cantidad_pack} x $${promoInfo!.desc_valor}`}
-                              </span>
-                              <span className="text-gray-500 text-[9px] line-through">${item.precio * item.cantidad}</span>
-                            </div>
-                          ) : promoInfo && !esPack ? (
-                            <div className="flex flex-col items-end">
-                              <span className={`font-black text-lg italic leading-none ${esDiaria ? "text-yellow-400" : "text-(--pink-75)"}`}>
-                                ${precioEsteItem}
-                              </span>
-                              <span className="text-gray-500 text-[9px] line-through">${item.precio * item.cantidad}</span>
-                            </div>
-                          ) : (
-                            <span className="text-lg font-bold">${precioEsteItem}</span>
-                          )}
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </>
             )}
           </div>
         ) : (
@@ -397,6 +430,12 @@ Pago: ${formData.pago.join(", ")}
 
         {/* Footer */}
         <div className="p-6 bg-zinc-950 border-t border-white/10 space-y-4">
+          {ahorroPaquetes > 0 && (
+            <div className="flex justify-between items-center text-xs text-green-400">
+              <span>Ahorro por combo:</span>
+              <span className="font-bold">-${Math.round(ahorroPaquetes)}</span>
+            </div>
+          )}
           <div className="flex justify-between items-end">
             <span className="text-gray-400 text-sm">Total:</span>
             <span className="text-2xl font-bold">${Math.round(total)}</span>

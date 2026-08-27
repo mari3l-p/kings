@@ -2,7 +2,7 @@
 import { calcularPrecioFinal, PromoType, DailyPromoType } from "../lib/utils";
 import { useEffect, useState } from "react"
 import { supabase } from "../lib/supabase"
-import { Check, Plus, Tag, Zap } from "lucide-react";
+import { Check, Gift, Plus, Tag, Zap } from "lucide-react";
 import Masonry from "react-masonry-css";
 import { useCart } from "../context/CartContext";
 
@@ -41,6 +41,19 @@ function getPromoBadgeText(promoInfo: PromoType | DailyPromoType): string {
   if (promoInfo.desc_tipo === "fijo") return `-$${promoInfo.desc_valor}`;
   if (promoInfo.desc_tipo === "pack" && promoInfo.cantidad_pack) return `${promoInfo.cantidad_pack} x $${promoInfo.desc_valor}`;
   return "PROMO";
+}
+
+// Devuelve una promo tipo "paquete" activa que incluya este modelo, si existe
+function getComboPromo(modNombre: string, promos: PromoType[] | null): PromoType | null {
+  if (!promos) return null;
+  const ahora = new Date();
+  return promos.find(p =>
+    p.desc_tipo === "paquete" &&
+    p.activo &&
+    ahora >= new Date(p.comienza) &&
+    ahora <= new Date(p.termina) &&
+    p.paquete_items?.some(pi => pi.nombre.toLowerCase() === modNombre.toLowerCase())
+  ) ?? null;
 }
 
 function getCache<T>(key: string): T | null {
@@ -102,7 +115,7 @@ export default function page() {
         } else {
             const { data: promosData, error: promoError } = await supabase
                 .from("promos")
-                .select("id, categoria, desc_tipo, desc_valor, cantidad_pack, comienza, termina, activo")
+                .select("id, nombre, categoria, desc_tipo, desc_valor, cantidad_pack, paquete_items, comienza, termina, activo")
                 .eq("activo", true)
                 .lte("comienza", ahora)
                 .gte("termina", ahora)
@@ -195,6 +208,7 @@ export default function page() {
                             dailyPromos
                         )
                         const tienePromo = promoInfo !== null
+                        const comboPromo = getComboPromo(mod.nombre, promos)
                         
                         // Evalúa si todos los productos de este modelo tienen stock en cero
                         const todosAgotados = mod.productos.every(prod => prod.stock === 0);
@@ -239,6 +253,22 @@ export default function page() {
                                         )}
                                     </div>
                                 </div>
+
+                                {comboPromo && (
+                                    <div className="mx-4 mt-4 flex items-start gap-2 bg-green-500/10 border border-green-500/30 rounded-xl px-3 py-2 text-xs text-green-400">
+                                        <Gift size={14} className="shrink-0 mt-0.5" />
+                                        <span>
+                                            Arma combo con{" "}
+                                            <b>
+                                                {comboPromo.paquete_items
+                                                    ?.filter(pi => pi.nombre.toLowerCase() !== mod.nombre.toLowerCase())
+                                                    .map(pi => pi.nombre)
+                                                    .join(" + ")}
+                                            </b>{" "}
+                                            por ${comboPromo.desc_valor}
+                                        </span>
+                                    </div>
+                                )}
 
                                 <div className="my-12 mx-4 flex flex-col">
                                     {todosAgotados ? (

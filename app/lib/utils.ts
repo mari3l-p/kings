@@ -1,9 +1,16 @@
+export interface PaqueteItem {
+  id: number;
+  nombre: string;
+}
+
 export interface PromoType {
   id: number;
+  nombre: string;
   categoria: string;
   desc_tipo: string;
   desc_valor: number;
   cantidad_pack?: number;
+  paquete_items?: PaqueteItem[] | null;
   activo: boolean;
   comienza: string;
   termina: string;
@@ -118,4 +125,76 @@ export function calcularPrecioFinal(
   // 2. Fall back to regular promo
   const regular = calcularPrecio(precioBase, modeloNombre, promos, cantidadEnCarrito);
   return { ...regular, esDiaria: false };
+}
+
+// ── Paquetes de modelos distintos ──────────────────────────────
+// A "paquete" promo requires one unit of EACH listed modelo to be
+// in the cart at the same time. Unlike calcularPrecioFinal (which
+// prices a single modelo in isolation), this looks at the whole
+// cart across different modelos.
+
+export interface CartItemForPaquete {
+  modelo: string;
+  precio: number;
+  cantidad: number;
+}
+
+export interface PaqueteAplicado {
+  promo: PromoType;
+  bundlesCount: number;
+  precioNormalConsumido: number; // sum of normal prices of the units this bundle replaces
+  precioPaquete: number;          // bundlesCount * promo.desc_valor
+}
+
+export function calcularPaquetesAplicables(
+  cart: CartItemForPaquete[],
+  promos: PromoType[] | null
+): PaqueteAplicado[] {
+  if (!promos || !Array.isArray(promos)) return [];
+
+  const ahora = new Date();
+  const paquetePromos = promos.filter(
+    (p) =>
+      p.desc_tipo === "paquete" &&
+      p.paquete_items &&
+      p.paquete_items.length >= 2 &&
+      p.activo &&
+      ahora >= new Date(p.comienza) &&
+      ahora <= new Date(p.termina)
+  );
+
+  if (paquetePromos.length === 0) return [];
+
+  // Cantidad y precio unitario disponibles por modelo (se consume a medida
+  // que se van armando paquetes, para no reusar la misma unidad dos veces).
+  const disponible: Record<string, { cantidad: number; precio: number }> = {};
+  for (const item of cart) {
+    const key = item.modelo.toLowerCase();
+    if (!disponible[key]) disponible[key] = { cantidad: 0, precio: item.precio };
+    disponible[key].cantidad += item.cantidad;
+  }
+
+  const resultados: PaqueteAplicado[] = [];
+
+  for (const promo of paquetePromos) {
+    const requeridos = promo.paquete_items!.map((pi) => pi.nombre.toLowerCase());
+    const disponiblesParaEste = requeridos.map((nombre) => disponible[nombre]?.cantidad || 0);
+    const veces = Math.floor(Math.min(...disponiblesParaEste));
+
+    if (veces > 0) {
+      let precioNormalConsumido = 0;
+      requeridos.forEach((nombre) => {
+        precioNormalConsumido += (disponible[nombre]?.precio || 0) * veces;
+        disponible[nombre].cantidad -= veces;
+      });
+      resultados.push({
+        promo,
+        bundlesCount: veces,
+        precioNormalConsumido,
+        precioPaquete: veces * promo.desc_valor,
+      });
+    }
+  }
+
+  return resultados;
 }

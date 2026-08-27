@@ -89,7 +89,7 @@ const AdminPage = () => {
                                 { id: "stats", label: "Estadísticas", icon: BarChart3 },
                                 { id: "promos", label: "Promociones", icon: Tag },
                                 { id: "dailyPromos", label: "Promociones Diarias", icon: Tag },
-                                { id: "productos", label: "Inventario", icon: Package },
+                                { id: "productos", label: "Ventas", icon: Package },
                                 { id: "anuncios", label: "Anuncios", icon: Megaphone }
                             ].map((item) => (
                                 <button
