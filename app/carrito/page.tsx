@@ -74,8 +74,21 @@ export default function Carrito({ isOpen, setIsOpen }: CarritoProps) {
   }, {} as Record<string, number>);
 
   // ── Paquetes de modelos distintos (aplican sobre el carrito completo) ──
+  // ⚠️ FIX: solo se consideran para combo los modelos que NO tengan ya una
+  // promo individual activa (diaria o regular). Antes se pasaba `cart` completo
+  // sin filtrar, lo que provocaba que un vape con descuento diario (ej. 10% los
+  // lunes) además entrara al combo y se le restara un segundo descuento sobre
+  // el precio ya rebajado.
+  const cartParaPaquetes = cart.filter((item) => {
+    const totalCantidadModelo = cantidadPorModelo[item.modelo.toLowerCase()];
+    const { promoInfo } = calcularPrecioFinal(
+      item.precio, item.modeloId, item.modelo, promos, dailyPromos, totalCantidadModelo
+    );
+    return promoInfo === null;
+  });
+
   const paquetesAplicados = calcularPaquetesAplicables(
-    cart.map((item) => ({ modelo: item.modelo, precio: item.precio, cantidad: item.cantidad })),
+    cartParaPaquetes.map((item) => ({ modelo: item.modelo, precio: item.precio, cantidad: item.cantidad })),
     promos
   );
   const ahorroPaquetes = paquetesAplicados.reduce(
