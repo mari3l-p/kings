@@ -3,6 +3,7 @@ import BigBtn from "./components/BigBtn";
 import PromoImg from "./components/PromoImg";
 import MasVendidos from "./components/MasVendido";
 import DailyPromoBanner from "./components/DailyPromoImg";
+import InstallAppButton from "./components/InstallButton";
 
 
 
@@ -39,9 +40,15 @@ export default function Home() {
       <DailyPromoBanner/>
     </div>
 
+
     <div>
       <PromoImg/>
     </div>
+
+    <div>
+      <InstallAppButton wrapperClassName="mb-20"/>
+    </div>
+
     <MasVendidos/>
     <img src="18.png" alt="recomienda y gana" className="w-full md:w-[60%] lg:w-[40%] overflow-hidden mx-auto rounded-2xl p-6" />
     </>
